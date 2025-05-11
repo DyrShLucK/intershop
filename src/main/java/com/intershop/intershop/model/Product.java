@@ -12,7 +12,7 @@ public class Product {
     private String name;
     private String description;
     private BigDecimal price;
-    @Lob
+    @Column(columnDefinition = "BYTEA")
     private byte[] image;
 
     public Long getId() {

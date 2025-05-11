@@ -2,6 +2,7 @@ package com.intershop.intershop.controller;
 
 import com.intershop.intershop.model.CartItem;
 import com.intershop.intershop.model.Product;
+import com.intershop.intershop.service.CartItemService;
 import com.intershop.intershop.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -14,22 +15,28 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.Map;
+
 @Controller
 @RequestMapping("/intershop")
 public class HeadController {
     @Autowired
     ProductService productService;
+    @Autowired
+    CartItemService cartItemService;
 
     @GetMapping
-    public String mainPage(@RequestParam(name = "search", required = false) String search,
+    public String mainPage(@RequestParam(name = "search", required = false, defaultValue = "") String search,
                            @RequestParam(name = "sort", defaultValue = "id") String sortBy,
                            @RequestParam(name = "sortDir", defaultValue = "ASC") String sortDir,
                            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
                            @RequestParam(name = "pageNumber", defaultValue = "0") int pageNumber,
                            Model model){
+
         Page<Product> productPage = productService.getProductsWithPaginationAndSort(
                 search, search, pageNumber, pageSize, sortBy, sortDir);
-        System.out.println(productPage.getTotalPages());
+
+
         model.addAttribute("items", productPage.getContent());
         model.addAttribute("paging", productPage);
         model.addAttribute("search", search != null ? search : "");
@@ -37,6 +44,9 @@ public class HeadController {
         model.addAttribute("sortDir", sortDir);
         model.addAttribute("pageSize", pageSize);
         model.addAttribute("currentPage", pageNumber);
+
+        Map<Long, Integer> productQuantities = cartItemService.getCartQuantitiesMap();
+        model.addAttribute("productQuantities", productQuantities);
 
         return "main";
     }
