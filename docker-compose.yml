@@ -1,24 +1,24 @@
-version: '3.8'
 
 services:
-  # PostgreSQL
   postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: intershop-postgres
     environment:
       POSTGRES_DB: intershop
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345
-      SPRING_JPA_PROPERTIES_HIBERNATE_CONNECTION_AUTOCOMMIT: "false"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - intershop-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-
-  # Spring Boot Приложение
   app:
     build: .
     container_name: intershop-app
@@ -29,6 +29,8 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 12345
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_PROPERTIES_HIBERNATE_CONNECTION_AUTOCOMMIT: "false"
+      SPRING_PROFILES_ACTIVE: prod
     depends_on:
       - postgres
     networks:

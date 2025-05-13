@@ -1,5 +1,7 @@
 package com.intershop.intershop.service;
 
+import com.intershop.intershop.exception.CartEmptyException;
+import com.intershop.intershop.exception.OrderNotFoundException;
 import com.intershop.intershop.model.CartItem;
 import com.intershop.intershop.model.Order;
 import com.intershop.intershop.model.OrderItem;
@@ -31,7 +33,7 @@ public class OrderService {
         return orderRepository.findAllByOrderByIdDesc();
     }
     public Order findOrderById(Long id){
-        return orderRepository.findById(id).orElseThrow();
+        return orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
     }
     public void deleteOrder(Long id){
         orderRepository.deleteById(id);
@@ -39,21 +41,16 @@ public class OrderService {
 
     @Transactional
     public Order createOrderFromCart() {
-        // 1. Получаем элементы корзины
         List<CartItem> cartItems = cartItemService.getCart();
 
         if (cartItems.isEmpty()) {
-            throw new IllegalStateException("Корзина пуста");
+            throw new CartEmptyException();
         }
 
         BigDecimal totalAmount = cartItems.stream()
                 .map(item -> {
                     BigDecimal productPrice = item.getProduct().getPrice();
                     int quantity = item.getQuantity();
-
-                    if (productPrice == null || productPrice.compareTo(BigDecimal.ZERO) < 0) {
-                        throw new IllegalArgumentException("Цена товара не указана или некорректна");
-                    }
 
                     return productPrice.multiply(BigDecimal.valueOf(quantity));
                 })

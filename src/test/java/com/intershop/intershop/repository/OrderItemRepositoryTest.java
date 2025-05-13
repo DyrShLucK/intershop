@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
@@ -71,7 +72,7 @@ public class OrderItemRepositoryTest {
         orderItemRepository.save(orderitem2);
 
     }
-
+    @DirtiesContext
     @Test
     void findByOrder_ShouldReturnListofOrderItems(){
         Order order1 = orderRepository.findById(1L).orElseThrow();

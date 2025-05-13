@@ -1,5 +1,6 @@
 package com.intershop.intershop.service;
 
+import com.intershop.intershop.exception.ProductNotFoundException;
 import com.intershop.intershop.model.CartItem;
 import com.intershop.intershop.model.Product;
 import com.intershop.intershop.repository.CartItemRepository;
@@ -25,12 +26,6 @@ public class CartItemService {
     public List<CartItem> getCart(){
         return cartItemRepository.findAll();
     }
-    public CartItem save(CartItem cartItem){
-        return cartItemRepository.save(cartItem);
-    }
-    public void delete(Long id){
-        cartItemRepository.deleteById(id);
-    }
     public void deleteAll(){
         cartItemRepository.deleteAll();
     }
@@ -52,9 +47,9 @@ public class CartItemService {
 
     @Transactional
     public void updateCartItem(Long productId, String action) {
-        Product product = productService.getProduct(productId); // Добавьте ProductService
+        Product product = productService.getProduct(productId);
         if (product == null) {
-            throw new IllegalArgumentException("Продукт не найден");
+            throw new ProductNotFoundException(productId);
         }
 
         CartItem cartItem = cartItemRepository.findByProduct_Id(productId);

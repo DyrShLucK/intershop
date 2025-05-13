@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.Map;
 
 @Controller
-@RequestMapping("/intershop")
+@RequestMapping("intershop")
 public class HeadController {
     @Autowired
     ProductService productService;

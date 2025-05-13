@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
-@RequestMapping("/intershop")
+@RequestMapping("intershop")
 public class itemController {
     @Autowired
     ProductService productService;

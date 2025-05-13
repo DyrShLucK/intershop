@@ -1,5 +1,6 @@
 package com.intershop.intershop.service;
 
+import com.intershop.intershop.exception.ProductNotFoundException;
 import com.intershop.intershop.model.Product;
 import com.intershop.intershop.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,7 @@ public class ProductService {
 
 
     public Product getProduct(Long id) {
-        return productRepository.getById(id);
+        return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
     }
     public Page<Product> getProductsWithPaginationAndSort(String name, String description, int pageNumber, int pageSize, String sortBy, String sortDir){
         Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
