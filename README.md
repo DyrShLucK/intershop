@@ -1,6 +1,6 @@
 # intershop
 #### Веб-Магазин
-#  Intershop — Простой интернет-магазин на Spring Boot
+#  Intershop — Реактивный интернет-магазин на Spring Boot
 ##  Описание
 ### Простой интернет-магазин с возможностями:
 
@@ -10,7 +10,7 @@
     Админка для добавления товаров
 ## Технологии
     Spring Boot 3.4.5 (Java 21)
-    Spring Data JPA + Thymeleaf
+    Spring Data R2DBC + Thymeleaf
     H2 Database (по умолчанию) / PostgreSQL
     Spring Boot DevTools
 # Как запустить

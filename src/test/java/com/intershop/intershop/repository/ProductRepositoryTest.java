@@ -1,112 +1,100 @@
 package com.intershop.intershop.repository;
 
 import com.intershop.intershop.model.Product;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-@ActiveProfiles("test")
-@DataJpaTest
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@DataR2dbcTest
 public class ProductRepositoryTest {
 
     @Autowired
     private ProductRepository productRepository;
 
-    @Autowired
-    private EntityManager entityManager;
-
     @BeforeEach
     void setUp() {
-        Product laptop = new Product();
-        laptop.setName("Laptop");
-        laptop.setDescription("High performance laptop");
-        laptop.setPrice(BigDecimal.valueOf(999.99));
+        productRepository.deleteAll()
+                .then()
+                .block();
+    }
+    @DirtiesContext
+    @Test
+    void testFindProductsByNameOrDescriptionIgnoreCase() {
+        Product product1 = createProduct(null, "TestProduct", "A product for testing", BigDecimal.TEN);
+        Product product2 = createProduct(null, "AnotherItem", "This is a test description", BigDecimal.valueOf(20));
+        Product product3 = createProduct(null, "NotRelated", "Some other description", BigDecimal.valueOf(30));
+        Product product4 = createProduct(null, "TestingStuff", "Another test", BigDecimal.valueOf(40));
 
-        Product phone = new Product();
-        phone.setName("Phone");
-        phone.setDescription("Smartphone with camera");
-        phone.setPrice(BigDecimal.valueOf(699.99));
+        productRepository.saveAll(Flux.just(product1, product2, product3, product4))
+                .then()
+                .block();
 
-        Product tablet = new Product();
-        tablet.setName("Tablet");
-        tablet.setDescription("Android tablet with long battery life");
-        tablet.setPrice(BigDecimal.valueOf(499.99));
+        Flux<Product> result = productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("test", "test", Pageable.unpaged());
 
-        entityManager.persist(laptop);
-        entityManager.persist(phone);
-        entityManager.persist(tablet);
+        StepVerifier.create(result)
+                .expectNextCount(3)
+                .verifyComplete();
     }
     @DirtiesContext
     @Test
-    void shouldFindProductsByNameIgnoreCase() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Product> result = productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("lap", null, pageable);
-        assertThat(result).hasSize(1);
-        assertThat(result.getContent().get(0).getName()).isEqualTo("Laptop");
-    }
-    @DirtiesContext
-    @Test
-    void shouldFindProductsByDescriptionIgnoreCase() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Product> result = productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(null, "camera", pageable);
-        assertThat(result).hasSize(1);
-        assertThat(result.getContent().get(0).getName()).isEqualTo("Phone");
-    }
-    @DirtiesContext
-    @Test
-    void shouldFindMultipleProductsByPartialMatch() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Product> result = productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("tab", "tab", pageable);
-        assertThat(result).hasSize(1);
-        assertThat(result.getContent().get(0).getName()).isEqualTo("Tablet");
-    }
-    @DirtiesContext
-    @Test
-    void shouldReturnEmptyPageWhenNoMatches() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Product> result = productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("xyz", "xyz", pageable);
-        assertThat(result).isEmpty();
-    }
-    @DirtiesContext
-    @Test
-    void shouldPaginateResultsCorrectly() {
-        Pageable firstPage = PageRequest.of(0, 2);
-        Pageable secondPage = PageRequest.of(1, 2);
+    void testCountProductsByNameOrDescriptionIgnoreCase() {
+        Product product1 = createProduct(null, "TestProduct", "Desc", BigDecimal.TEN);
+        Product product2 = createProduct(null, "Demo", "TestDescription", BigDecimal.valueOf(20));
+        Product product3 = createProduct(null, "NoMatch", "Nothing", BigDecimal.valueOf(30));
 
-        Page<Product> first = productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("", "", firstPage);
-        Page<Product> second = productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("", "", secondPage);
+        productRepository.saveAll(Flux.just(product1, product2, product3))
+                .then()
+                .block();
 
-        assertThat(first).hasSize(2);
-        assertThat(second).hasSize(1);
+        Mono<Long> count = productRepository.countByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("test");
+
+        StepVerifier.create(count)
+                .expectNext(2L)
+                .verifyComplete();
     }
     @DirtiesContext
     @Test
-    void shouldFindProductById() {
+    void testPaginationWorksCorrectly() {
+        Product product1 = createProduct(null, "TestA", "DescA", BigDecimal.TEN);
+        Product product2 = createProduct(null, "TestB", "DescB", BigDecimal.valueOf(20));
+        Product product3 = createProduct(null, "TestC", "DescC", BigDecimal.valueOf(30));
+
+        productRepository.saveAll(Flux.just(product1, product2, product3))
+                .then()
+                .block();
+
+        Flux<Product> firstPage = productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("test", "test", Pageable.ofSize(2));
+        Flux<Product> secondPage = productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("test", "test", Pageable.ofSize(2).withPage(1));
+
+        StepVerifier.create(firstPage)
+                .expectNextCount(2)
+                .verifyComplete();
+
+        StepVerifier.create(secondPage)
+                .expectNextCount(1)
+                .verifyComplete();
+    }
+
+    private Product createProduct(Long id, String name, String description, BigDecimal price) {
         Product product = new Product();
-        product.setName("Headphones");
-        product.setPrice(BigDecimal.valueOf(199.99));
-        Product saved = productRepository.save(product);
-
-        Optional<Product> found = productRepository.findById(saved.getId());
-        assertThat(found).isPresent();
-        assertThat(found.get().getName()).isEqualTo("Headphones");
-    }
-    @DirtiesContext
-    @Test
-    void shouldReturnEmptyOptionalIfIdNotFound() {
-        Optional<Product> found = productRepository.findById(999L);
-        assertThat(found).isEmpty();
+        product.setId(id);
+        product.setName(name);
+        product.setDescription(description);
+        product.setPrice(price);
+        product.setImage(new byte[0]);
+        return product;
     }
 }

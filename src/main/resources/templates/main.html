@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-
+<meta charset="UTF-8">
 <head>
     <title>Витрина товаров</title>
 </head>
@@ -42,7 +42,7 @@
                     </p>
                     <p>
                         <button th:if="${paging.hasPrevious()}" name="pageNumber" th:value="${paging.number-1}">&lt;</button>
-                        <span th:text="${'Страница: '+paging.number}"></span>
+                        <span th:text="|Страница: ${paging.number + 1}|"></span>
                         <button th:if="${paging.hasNext()}" name="pageNumber" th:value="${paging.number+1}">&gt;</button>
                     </p>
                 </form>

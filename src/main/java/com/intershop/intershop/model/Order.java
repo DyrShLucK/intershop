@@ -1,24 +1,24 @@
 package com.intershop.intershop.model;
 
-import jakarta.persistence.*;
-import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
 
-@Entity
-@Table(name = "orders")
+
+@Table("orders")
 public class Order {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @CreatedDate
-    //@Column(name = "order_date", nullable = false, updatable = false)
+    @Column("order_date")
     private LocalDateTime orderDate;
+    @Column("total_amount")
     private BigDecimal totalAmount;
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @Transient
     private List<OrderItem> orderItems;
 
     public Long getId() {
@@ -48,7 +48,6 @@ public class Order {
     public List<OrderItem> getOrderItems() {
         return orderItems;
     }
-
     public void setOrderItems(List<OrderItem> orderItems) {
         this.orderItems = orderItems;
     }

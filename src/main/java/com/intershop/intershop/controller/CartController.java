@@ -1,53 +1,67 @@
 package com.intershop.intershop.controller;
 
-import com.intershop.intershop.model.Product;
+import com.intershop.intershop.exception.CartEmptyException;
 import com.intershop.intershop.service.CartItemService;
 import com.intershop.intershop.service.OrderService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.Map;
+import java.math.BigDecimal;
 
-@RequestMapping("intershop/cart")
 @Controller
+@RequestMapping("intershop/cart")
 public class CartController {
+    private final CartItemService cartItemService;
+    private final OrderService orderService;
 
-    @Autowired
-    CartItemService cartItemService;
-    @Autowired
-    private OrderService orderService;
+    public CartController(CartItemService cartItemService, OrderService orderService) {
+        this.cartItemService = cartItemService;
+        this.orderService = orderService;
+    }
 
     @GetMapping
-    public String cartView(Model model){
-
-        List<Product> productList = cartItemService.getProductsInCart();
-        model.addAttribute("items", productList);
-
-        Map<Long, Integer> productQuantities = cartItemService.getCartQuantitiesMap();
-        model.addAttribute("productQuantities", productQuantities);
-
-        model.addAttribute("total", cartItemService.getTotal());
-        return "cart";
+    public Mono<String> getCart(Model model) {
+        return cartItemService.getProductsInCart()
+                .collectList()
+                .flatMap(products -> cartItemService.getCartQuantitiesMap()
+                        .flatMap(quantities -> cartItemService.getTotal()
+                                .map(total -> {
+                                    model.addAttribute("items", products);
+                                    model.addAttribute("productQuantities", quantities);
+                                    model.addAttribute("total", total != null ? total : BigDecimal.ZERO);
+                                    return "cart";
+                                })));
     }
+
     @PostMapping("/{productId}")
-    public String updateCartItem(@PathVariable Long productId,
-                                 @RequestParam String action,
-                                 @RequestParam(required = false) String redirectUrl) {
-        cartItemService.updateCartItem(productId, action);
-        return "redirect:" + (redirectUrl != null ? redirectUrl : "/intershop");
+    public Mono<String> updateCartItem(
+            @PathVariable Long productId,
+            ServerWebExchange exchange
+    ) {
+        return exchange.getFormData()
+                .flatMap(formData -> {
+                    String action = formData.getFirst("action");
+                    String redirectUrl = formData.getFirst("redirectUrl");
+
+                    return cartItemService.updateCartItem(productId, action).thenReturn("redirect:" + (redirectUrl != null ? redirectUrl : "/intershop"));});
+
     }
 
     @PostMapping("/buy")
-    public String createOrderAndRedirect(RedirectAttributes redirectAttributes) {
-        try {
-            var order = orderService.createOrderFromCart();
-            return "redirect:/intershop/orders/" + order.getId();
-        } catch (Exception e) {
-            return "redirect:/intershop/cart";
-        }
+    public Mono<String> createOrder(ServerWebExchange exchange) {
+        return orderService.createOrderFromCart()
+                .doOnSuccess(order -> {
+                    exchange.getSession()
+                            .flatMap(session -> {
+                                session.getAttributes().put("success", "Заказ успешно создан");
+                                return Mono.empty();
+                            });
+                })
+                .map(order -> "redirect:/intershop/orders/" + order.getId())
+                .onErrorResume(CartEmptyException.class, ex ->
+                        Mono.just("redirect:/intershop/cart"));
     }
 }

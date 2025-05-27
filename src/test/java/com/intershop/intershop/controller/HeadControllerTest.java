@@ -1,31 +1,31 @@
 package com.intershop.intershop.controller;
 
+import com.intershop.intershop.DTO.ProductPageDTO;
 import com.intershop.intershop.model.Product;
 import com.intershop.intershop.service.CartItemService;
 import com.intershop.intershop.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.util.*;
 
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
-@WebMvcTest(HeadController.class)
-@ActiveProfiles("test")
+@WebFluxTest(controllers = HeadController.class)
 public class HeadControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebTestClient webTestClient;
 
     @MockBean
     private ProductService productService;
@@ -33,64 +33,76 @@ public class HeadControllerTest {
     @MockBean
     private CartItemService cartItemService;
 
-    private Product createTestProduct() {
-        Product product = new Product();
-        product.setId(1L);
-        product.setName("Test Product");
-        product.setDescription("Test Description");
-        product.setPrice(BigDecimal.valueOf(100.00));
-        product.setImage("test_image".getBytes());
-        return product;
+    private final Product testProduct = new Product(1L, "Test Product", "Description", BigDecimal.TEN, new byte[0]);
+
+    @Test
+    void mainPage_ShouldReturnProductsAndCartData() {
+        String search = "test";
+        String sort = "name";
+        String sortDir = "ASC";
+        int pageSize = 5;
+        int pageNumber = 1;
+
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.fromString(sortDir), sort));
+        ProductPageDTO productPageDTO = new ProductPageDTO(
+                List.of(testProduct),
+                pageable,
+                1,
+                search
+        );
+
+        Map<Long, Integer> cartQuantities = new HashMap<>();
+        cartQuantities.put(1L, 2);
+
+        when(productService.getProductsWithPaginationAndSort(search, pageable))
+                .thenReturn(Mono.just(productPageDTO));
+
+        when(cartItemService.getCartQuantitiesMap())
+                .thenReturn(Mono.just(cartQuantities));
+
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/intershop")
+                        .queryParam("search", search)
+                        .queryParam("sort", sort)
+                        .queryParam("sortDir", sortDir)
+                        .queryParam("pageSize", pageSize)
+                        .queryParam("pageNumber", pageNumber)
+                        .build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .consumeWith(response -> {
+                    String body = response.getResponseBody();
+
+                    assertThat(body).contains("Test Product");
+                    assertThat(body).contains("2");
+                    assertThat(body).contains("/intershop/products/1/image");
+                    assertThat(body).contains("search");
+                    assertThat(body).contains("sort");
+                    assertThat(body).contains("pageSize");
+                });
     }
 
     @Test
-    public void mainPage_ShouldReturnMainTemplateWithProducts() throws Exception {
-        Product product = createTestProduct();
-        Page<Product> productPage = new PageImpl<>(List.of(product));
+    void getProductImage_ShouldReturnImage() {
 
-        when(productService.getProductsWithPaginationAndSort(
-                "", "", 0, 10, "id", "ASC")).thenReturn(productPage);
+        Product productWithImage = new Product(
+                1L, "Test Product", "Description", BigDecimal.TEN, new byte[0]);
 
-        when(cartItemService.getCartQuantitiesMap()).thenReturn(new HashMap<>());
+        when(productService.getProduct(1L))
+                .thenReturn(Mono.just(productWithImage));
 
-        mockMvc.perform(get("/intershop"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("main"))
-                .andExpect(model().attributeExists("items", "paging", "productQuantities"));
-    }
-
-    @Test
-    public void mainPage_WithParams_ShouldPassToProductService() throws Exception {
-        Product product = createTestProduct();
-        Page<Product> productPage = new PageImpl<>(List.of(product));
-
-        when(productService.getProductsWithPaginationAndSort(
-                "abc", "abc", 1, 5, "name", "DESC")).thenReturn(productPage);
-
-        when(cartItemService.getCartQuantitiesMap()).thenReturn(new HashMap<>());
-
-        mockMvc.perform(get("/intershop")
-                        .param("search", "abc")
-                        .param("sort", "name")
-                        .param("sortDir", "DESC")
-                        .param("pageNumber", "1")
-                        .param("pageSize", "5"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("main"));
-
-        verify(productService, times(1)).getProductsWithPaginationAndSort(
-                "abc", "abc", 1, 5, "name", "DESC");
-    }
-
-    @Test
-    public void getProductImage_ReturnsImageAsBytes() throws Exception {
-        Product product = createTestProduct();
-
-        when(productService.getProduct(1L)).thenReturn(product);
-
-        mockMvc.perform(get("/intershop/products/1/image"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.IMAGE_JPEG))
-                .andExpect(content().bytes(product.getImage()));
+        webTestClient.get()
+                .uri("/intershop/products/1/image")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.IMAGE_JPEG)
+                .expectBody(byte[].class)
+                .consumeWith(result -> {
+                    byte[] responseBody = result.getResponseBody();
+                    assertThat(responseBody).isEqualTo(new byte[0]);
+                });
     }
 }

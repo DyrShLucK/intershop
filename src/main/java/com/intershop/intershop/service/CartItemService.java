@@ -1,89 +1,85 @@
 package com.intershop.intershop.service;
 
+import com.intershop.intershop.exception.CartEmptyException;
 import com.intershop.intershop.exception.ProductNotFoundException;
+import com.intershop.intershop.exception.ProductsNotFoundException;
 import com.intershop.intershop.model.CartItem;
 import com.intershop.intershop.model.Product;
 import com.intershop.intershop.repository.CartItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class CartItemService {
 
-    @Autowired
-    CartItemRepository cartItemRepository;
-    @Autowired
-    ProductService productService;
+    private final CartItemRepository cartItemRepository;
+    private final ProductService productService;
 
-    public List<CartItem> getCart(){
+    public CartItemService(CartItemRepository cartItemRepository, ProductService productService) {
+        this.cartItemRepository = cartItemRepository;
+        this.productService = productService;
+    }
+
+    public Flux<CartItem> getCart() {
         return cartItemRepository.findAll();
     }
-    public void deleteAll(){
-        cartItemRepository.deleteAll();
-    }
-    public int getQuantityByProductId(Long productId) {
-        CartItem item = cartItemRepository.findByProduct_Id(productId);
-        return (item != null) ? item.getQuantity() : 0;
+
+    public Mono<Void> deleteAll() {
+        return cartItemRepository.deleteAll();
     }
 
-    public Map<Long, Integer> getCartQuantitiesMap() {
-        Map<Long, Integer> quantities = new HashMap<>();
-        List<CartItem> cartItems = cartItemRepository.findAll();
-
-        for (CartItem item : cartItems) {
-            quantities.put(item.getProduct().getId(), item.getQuantity());
-        }
-
-        return quantities;
+    public Mono<Integer> getQuantityByProductId(Long productId) {
+        return cartItemRepository.findByProductId(productId)
+                .map(CartItem::getQuantity)
+                .defaultIfEmpty(0);
     }
 
-    @Transactional
-    public void updateCartItem(Long productId, String action) {
-        Product product = productService.getProduct(productId);
-        if (product == null) {
-            throw new ProductNotFoundException(productId);
-        }
-
-        CartItem cartItem = cartItemRepository.findByProduct_Id(productId);
-        if (cartItem == null) {
-            cartItem = new CartItem();
-            cartItem.setProduct(product);
-            cartItem.setQuantity(0);
-        }
-
-        if ("plus".equals(action)) {
-            cartItem.setQuantity(cartItem.getQuantity() + 1);
-        } else if ("minus".equals(action)) {
-            if (cartItem.getQuantity() > 0) {
-                cartItem.setQuantity(cartItem.getQuantity() - 1);
-            }
-        }
-
-        if (cartItem.getQuantity() == 0 && cartItem.getId() != null) {
-            cartItemRepository.deleteById(cartItem.getId());
-        } else {
-            cartItemRepository.save(cartItem);
-        }
+    public Mono<Map<Long, Integer>> getCartQuantitiesMap() {
+        return getCart()
+                .collectList()
+                .map(items -> {
+                    Map<Long, Integer> quantities = new HashMap<>();
+                    if (items != null && !items.isEmpty()) {
+                        items.forEach(item -> quantities.put(item.getProductId(), item.getQuantity()));
+                    }
+                    return quantities;
+                });
     }
 
-    public List<Product> getProductsInCart() {
-        List<CartItem> cartItems = cartItemRepository.findAllWithProductSortedById();
-        return cartItems.stream()
-                .map(CartItem::getProduct)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+    public Mono<Void> updateCartItem(Long productId, String action) {
+        return productService.getProduct(productId)
+                .switchIfEmpty(Mono.error(new ProductNotFoundException(productId)))
+                .flatMap(product -> cartItemRepository.findByProductId(productId)
+                        .defaultIfEmpty(new CartItem(null, productId, 0))
+                        .flatMap(cartItem -> {
+                            int newQuantity = "plus".equals(action)
+                                    ? cartItem.getQuantity() + 1
+                                    : Math.max(0, cartItem.getQuantity() - 1);
+
+                            if (newQuantity == 0 && cartItem.getId() != null) {
+                                return cartItemRepository.deleteById(cartItem.getId());
+                            } else {
+                                cartItem.setQuantity(newQuantity);
+                                return cartItemRepository.save(cartItem).then();
+                            }
+                        }));
     }
 
-    public BigDecimal getTotal(){
-        return cartItemRepository.calculateTotalPrice();
+    public Flux<Product> getProductsInCart() {
+        return cartItemRepository.findAll()
+                .flatMap(cartItem -> productService.getProduct(cartItem.getProductId()))
+                .onErrorResume(ProductNotFoundException.class, ex -> Mono.empty()).switchIfEmpty(Flux.empty());
     }
 
+    public Mono<BigDecimal> getTotal() {
+        return cartItemRepository.calculateTotalPrice()
+                .defaultIfEmpty(BigDecimal.ZERO);
+    }
 }

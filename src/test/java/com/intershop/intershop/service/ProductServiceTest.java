@@ -1,33 +1,32 @@
 package com.intershop.intershop.service;
 
+import com.intershop.intershop.DTO.ProductPageDTO;
 import com.intershop.intershop.exception.ProductNotFoundException;
 import com.intershop.intershop.model.Product;
 import com.intershop.intershop.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.*;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.data.domain.Pageable;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.Optional;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
-public class ProductServiceTest {
-
-    @Mock
-    private ProductRepository productRepository;
+class ProductServiceTest {
 
     @InjectMocks
     private ProductService productService;
+
+    @Mock
+    private ProductRepository productRepository;
 
     private Product testProduct;
 
@@ -37,59 +36,62 @@ public class ProductServiceTest {
         testProduct.setId(1L);
         testProduct.setName("Test Product");
         testProduct.setDescription("Test Description");
-        testProduct.setPrice(BigDecimal.valueOf(100.00));
+        testProduct.setPrice(BigDecimal.valueOf(99.99));
     }
 
     @Test
-    void getProduct_ExistingId_ShouldReturnsProduct() {
-        when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
+    void getProduct_ShouldReturnProduct_WhenExists() {
+        when(productRepository.findById(1L)).thenReturn(Mono.just(testProduct));
 
-        Product result = productService.getProduct(1L);
+        Mono<Product> result = productService.getProduct(1L);
 
-        assertNotNull(result);
-        assertEquals("Test Product", result.getName());
+        StepVerifier.create(result)
+                .expectNextMatches(product -> product.getId().equals(1L))
+                .verifyComplete();
+
         verify(productRepository, times(1)).findById(1L);
     }
 
     @Test
-    void getProduct_NonExistingId_ThrowsProductNotFoundException() {
-        when(productRepository.findById(1L)).thenReturn(Optional.empty());
+    void getProduct_ShouldThrowException_WhenNotFound() {
+        when(productRepository.findById(1L)).thenReturn(Mono.empty());
 
-        assertThrows(ProductNotFoundException.class, () -> productService.getProduct(1L));
-        verify(productRepository, times(1)).findById(1L);
+        Mono<Product> result = productService.getProduct(1L);
+
+        StepVerifier.create(result)
+                .expectError(ProductNotFoundException.class)
+                .verify();
     }
 
     @Test
-    void getProductsWithPaginationAndSort_ShouldCallsRepositoryWithCorrectParams() {
-        Page<Product> page = new PageImpl<>(Arrays.asList(testProduct));
-        Sort sort = Sort.by("name").ascending();
-        Pageable pageable = PageRequest.of(0, 10, sort);
+    void getProductsWithPaginationAndSort_ShouldReturnPageWithResults() {
+        Pageable pageable = mock(Pageable.class);
+        List<Product> products = List.of(testProduct);
 
-        when(productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("test", "desc", pageable))
-                .thenReturn(page);
+        when(productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("test", "test", pageable))
+                .thenReturn(Flux.fromIterable(products));
+        when(productRepository.countByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("test"))
+                .thenReturn(Mono.just(1L));
 
-        Page<Product> result = productService.getProductsWithPaginationAndSort("test", "desc", 0, 10, "name", "ASC");
+        Mono<ProductPageDTO> result = productService.getProductsWithPaginationAndSort("test", pageable);
 
-        assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
-        verify(productRepository, times(1)).findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("test", "desc", pageable);
+        StepVerifier.create(result)
+                .expectNextMatches(dto -> dto.getTotalElements() == 1 && dto.getSearch().equals("test"))
+                .verifyComplete();
     }
 
+
     @Test
-    void save_DelegatesToRepository() {
-        when(productRepository.save(testProduct)).thenReturn(testProduct);
+    void save_ShouldReturnSavedProduct() {
+        when(productRepository.save(testProduct)).thenReturn(Mono.just(testProduct));
 
-        Product result = productService.save(testProduct);
+        Mono<Product> result = productService.save(testProduct);
 
-        assertNotNull(result);
-        assertEquals("Test Product", result.getName());
+        StepVerifier.create(result)
+                .expectNext(testProduct)
+                .verifyComplete();
+
         verify(productRepository, times(1)).save(testProduct);
     }
 
-    @Test
-    void deleteProduct_ShouldCallsDeleteById() {
-        productService.deleteProduct(1L);
-
-        verify(productRepository, times(1)).deleteById(1L);
-    }
 }

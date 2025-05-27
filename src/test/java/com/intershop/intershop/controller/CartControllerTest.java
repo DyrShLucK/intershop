@@ -4,26 +4,27 @@ import com.intershop.intershop.model.Order;
 import com.intershop.intershop.model.Product;
 import com.intershop.intershop.service.CartItemService;
 import com.intershop.intershop.service.OrderService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(CartController.class)
-@ActiveProfiles("test")
+@WebFluxTest(controllers = CartController.class)
 public class CartControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebTestClient webTestClient;
 
     @MockBean
     private CartItemService cartItemService;
@@ -31,47 +32,50 @@ public class CartControllerTest {
     @MockBean
     private OrderService orderService;
 
-    private Product createTestProduct(Long id) {
-        Product product = new Product();
-        product.setId(id);
-        product.setName("Test Product");
-        product.setDescription("Test Description");
-        product.setPrice(BigDecimal.valueOf(100.00));
-        return product;
+    private final Product testProduct = new Product(1L, "Test Product", "Description", BigDecimal.TEN, new byte[0]);
+
+    @Test
+    @DisplayName("Отображение страницы корзины с товарами")
+    void getCart_ShouldReturnCartPageWithItemsAndTotalPrice() {
+        List<Product> products = List.of(testProduct);
+        Map<Long, Integer> quantities = Map.of(1L, 2);
+        BigDecimal total = BigDecimal.valueOf(20.0);
+
+        when(cartItemService.getProductsInCart()).thenReturn(Flux.fromIterable(products));
+        when(cartItemService.getCartQuantitiesMap()).thenReturn(Mono.just(quantities));
+        when(cartItemService.getTotal()).thenReturn(Mono.just(total));
+
+        webTestClient.get()
+                .uri("/intershop/cart")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .consumeWith(response -> {
+                    String body = response.getResponseBody();
+
+                    assert body != null;
+                    org.assertj.core.api.Assertions.assertThat(body).contains("Test Product");
+                    org.assertj.core.api.Assertions.assertThat(body).contains("10 руб.");
+                    org.assertj.core.api.Assertions.assertThat(body).contains("2");
+                    org.assertj.core.api.Assertions.assertThat(body).contains("20");
+                });
     }
 
     @Test
-    public void cartView_ShouldReturnCartTemplateWithAttributes() throws Exception {
-        Product product = createTestProduct(1L);
+    @DisplayName("Создание заказа из корзины")
+    void createOrder_ShouldCreateOrderAndRedirectToOrderPage() {
+        Order testOrder = new Order();
+        testOrder.setId(1L);
 
-        when(cartItemService.getProductsInCart()).thenReturn(List.of(product));
-        when(cartItemService.getCartQuantitiesMap()).thenReturn(Map.of(1L, 2));
-        when(cartItemService.getTotal()).thenReturn(BigDecimal.valueOf(200.00));
+        when(orderService.createOrderFromCart())
+                .thenReturn(Mono.just(testOrder));
 
-        mockMvc.perform(get("/intershop/cart"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("cart"))
-                .andExpect(model().attribute("items", List.of(product)))
-                .andExpect(model().attribute("productQuantities", Map.of(1L, 2)))
-                .andExpect(model().attribute("total", BigDecimal.valueOf(200.00)));
-
-        verify(cartItemService, times(1)).getProductsInCart();
-        verify(cartItemService, times(1)).getCartQuantitiesMap();
-        verify(cartItemService, times(1)).getTotal();
-    }
-
-    @Test
-    public void createOrderAndRedirect_Successful_ShouldRedirectToOrderPage() throws Exception {
-        when(orderService.createOrderFromCart()).thenReturn(new Order());
-        when(orderService.createOrderFromCart()).thenAnswer(invocation -> {
-            Order order = new Order();
-            order.setId(123L);
-            return order;
-        });
-
-        mockMvc.perform(post("/intershop/cart/buy"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/intershop/orders/123"));
+        webTestClient.post()
+                .uri("/intershop/cart/buy")
+                .exchange()
+                .expectStatus().is3xxRedirection()
+                .expectHeader().location("/intershop/orders/1");
 
         verify(orderService, times(1)).createOrderFromCart();
     }

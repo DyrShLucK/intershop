@@ -1,81 +1,119 @@
 package com.intershop.intershop.service;
 
+
 import com.intershop.intershop.exception.CartEmptyException;
 import com.intershop.intershop.exception.OrderNotFoundException;
+import com.intershop.intershop.exception.ProductNotFoundException;
+import com.intershop.intershop.exception.ProductsNotFoundException;
 import com.intershop.intershop.model.CartItem;
 import com.intershop.intershop.model.Order;
 import com.intershop.intershop.model.OrderItem;
 import com.intershop.intershop.repository.OrderRepository;
-import org.aspectj.weaver.ast.Or;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+
 @Service
 public class OrderService {
 
-    @Autowired
-    OrderRepository orderRepository;
-    @Autowired
-    CartItemService cartItemService;
-    @Autowired
-    OrderItemService orderItemService;
+    private final OrderRepository orderRepository;
+    private final CartItemService cartItemService;
+    private final OrderItemService orderItemService;
+    private final ProductService productService;
 
-    public Order save(Order order){
+    public OrderService(OrderRepository orderRepository, CartItemService cartItemService, OrderItemService orderItemService, ProductService productService) {
+        this.orderRepository = orderRepository;
+        this.cartItemService = cartItemService;
+        this.orderItemService = orderItemService;
+        this.productService = productService;
+    }
+
+    public Mono<Order> save(Order order) {
         return orderRepository.save(order);
     }
 
-    public List<Order> findAll(){
-        return orderRepository.findAllByOrderByIdDesc();
+    public Flux<Order> findAll() {
+        return orderRepository.findAllByOrderByIdDesc()
+                .concatMap(order -> orderItemService.getOrderItemsByOrderId(order.getId())
+                        .collectList()
+                        .map(items -> {
+                            if (items == null || items.isEmpty()) {
+                                throw new ProductsNotFoundException();
+                            }
+                            order.setOrderItems(items);
+                            return order;
+                        }));
     }
-    public Order findOrderById(Long id){
-        return orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+
+    public Mono<Order> findOrderById(Long id) {
+        return orderRepository.findById(id)
+                .switchIfEmpty(Mono.error(new OrderNotFoundException(id)))
+                .flatMap(order -> orderItemService.getOrderItemsByOrderId(order.getId())
+                        .collectList()
+                        .map(items -> {
+                            if (items == null || items.isEmpty()) {
+                                throw new ProductsNotFoundException();
+                            }
+                            order.setOrderItems(items);
+                            return order;
+                        }));
     }
-    public void deleteOrder(Long id){
-        orderRepository.deleteById(id);
+
+    public Mono<Void> deleteOrder(Long id) {
+        return orderRepository.deleteById(id);
     }
 
-    @Transactional
-    public Order createOrderFromCart() {
-        List<CartItem> cartItems = cartItemService.getCart();
+    public Mono<Order> createOrderFromCart() {
+        return cartItemService.getCart()
+                .collectList()
+                .filter(cartItems -> !cartItems.isEmpty())
+                .switchIfEmpty(Mono.error(new CartEmptyException()))
+                .flatMap(cartItems -> calculateTotalAmount(cartItems)
+                        .flatMap(totalAmount -> {
+                            Order order = new Order();
+                            order.setOrderDate(LocalDateTime.now());
+                            order.setTotalAmount(totalAmount);
+                            return orderRepository.save(order)
+                                    .flatMap(savedOrder -> createOrderItems(savedOrder, cartItems)
+                                            .collectList()
+                                            .flatMap(orderItemsList -> orderItemService.saveAll(Flux.fromIterable(orderItemsList))
+                                                    .collectList()
+                                                    .map(savedItems -> {
+                                                        savedOrder.setOrderItems(savedItems);
+                                                        return savedOrder;
+                                                    })
+                                            )
+                                    );
+                        }));
+    }
 
-        if (cartItems.isEmpty()) {
-            throw new CartEmptyException();
-        }
 
-        BigDecimal totalAmount = cartItems.stream()
-                .map(item -> {
-                    BigDecimal productPrice = item.getProduct().getPrice();
-                    int quantity = item.getQuantity();
-
-                    return productPrice.multiply(BigDecimal.valueOf(quantity));
-                })
+    private Mono<BigDecimal> calculateTotalAmount(List<CartItem> cartItems) {
+        return Flux.fromIterable(cartItems)
+                .flatMap(item -> productService.getProduct(item.getProductId())
+                        .map(product -> product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()))))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        Order order = new Order();
-        order.setOrderDate(LocalDateTime.now());
-        order.setTotalAmount(totalAmount);
-
-        Order savedOrder = orderRepository.save(order);
-
-        List<OrderItem> orderItems = cartItems.stream()
-                .map(cartItem -> {
-                    OrderItem orderItem = new OrderItem();
-                    orderItem.setProduct(cartItem.getProduct());
-                    orderItem.setQuantity(cartItem.getQuantity());
-                    orderItem.setPrice(cartItem.getProduct().getPrice());
-                    orderItem.setOrder(savedOrder);
-                    return orderItem;
-                })
-                .collect(Collectors.toList());
-
-        orderItemService.saveAll(orderItems);
-        cartItemService.deleteAll();
-
-        return savedOrder;
     }
+
+    private Flux<OrderItem> createOrderItems(Order savedOrder, List<CartItem> cartItems) {
+        return Flux.fromIterable(cartItems)
+                .concatMap(cartItem -> productService.getProduct(cartItem.getProductId()).switchIfEmpty(Mono.error(new ProductNotFoundException(cartItem.getProductId())))
+                        .map(product -> {
+                            OrderItem orderItem = new OrderItem();
+                            orderItem.setProductId(cartItem.getProductId());
+                            orderItem.setQuantity(cartItem.getQuantity());
+                            orderItem.setPrice(product.getPrice());
+                            orderItem.setOrderId(savedOrder.getId());
+                            return orderItem;
+                        }));
+    }
+    public Flux<OrderItem> getOrderItems(Long orderId) {
+        return orderItemService.getOrderItemsByOrderId(orderId);
+    }
+
 }
