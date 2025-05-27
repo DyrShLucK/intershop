@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<meta charset="UTF-8">
 <head>
     <title>Корзина товаров</title>
 </head>
@@ -13,7 +13,7 @@
     <b>ГЛАВНАЯ &cudarrr;</b>
 </a>
 <table style="width:70%;margin-left:auto;margin-right:auto;">
-    <div th:if="${total == null or total.compareTo(0) == 0}">
+    <div th:if="${total == null or total <= 0}">
         <p>Ваша корзина пуста.</p>
         <a href="/intershop">Назад к покупкам</a>
     </div>

@@ -1,77 +1,68 @@
 package com.intershop.intershop.controller;
 
+import com.intershop.intershop.exception.MissingParamException;
 import com.intershop.intershop.exception.OrderNotFoundException;
 import com.intershop.intershop.exception.ProductNotFoundException;
 import org.springframework.http.HttpStatus;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.servlet.ModelAndView;
-import org.springframework.web.servlet.NoHandlerFoundException;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
+import org.springframework.web.server.MethodNotAllowedException;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
+import java.io.IOException;
 @ControllerAdvice
 public class GlobalExceptionController {
 
+    @ExceptionHandler(IOException.class)
+    public Mono<String> handleIOException(IOException ex, ServerWebExchange exchange) {
+        return exchange.getSession()
+                .doOnNext(session -> {
+                    session.getAttributes().put("error", "Ошибка чтения изображения: " + ex.getMessage());
+                })
+                .thenReturn("redirect:/admin/add-product");
+    }
+
     @ExceptionHandler(ProductNotFoundException.class)
-    public ModelAndView handleProductNotFound(ProductNotFoundException ex) {
-        ModelAndView modelAndView = new ModelAndView("error");
-        modelAndView.addObject("message", ex.getMessage());
-        modelAndView.addObject("statusCode", HttpStatus.NOT_FOUND.value());
-        modelAndView.setStatus(HttpStatus.NOT_FOUND);
-        return modelAndView;
+    public Mono<String> handleProductNotFound(ProductNotFoundException ex, Model model) {
+        model.addAttribute("message", ex.getMessage());
+        model.addAttribute("statusCode", HttpStatus.NOT_FOUND.value());
+        return Mono.just("error");
     }
 
     @ExceptionHandler(OrderNotFoundException.class)
-    public ModelAndView handleOrderNotFound(OrderNotFoundException ex) {
-        ModelAndView modelAndView = new ModelAndView("error");
-        modelAndView.addObject("message", ex.getMessage());
-        modelAndView.addObject("statusCode", HttpStatus.NOT_FOUND.value());
-        modelAndView.setStatus(HttpStatus.NOT_FOUND);
-        return modelAndView;
+    public Mono<String> handleOrderNotFound(OrderNotFoundException ex, Model model) {
+        model.addAttribute("message", ex.getMessage());
+        model.addAttribute("statusCode", HttpStatus.NOT_FOUND.value());
+        return Mono.just("error");
     }
-
-    @ExceptionHandler(NoHandlerFoundException.class)
-    public ModelAndView handleNoHandlerFound(NoHandlerFoundException ex) {
-        ModelAndView modelAndView = new ModelAndView("error");
-        modelAndView.addObject("message", "Страница не найдена: " + ex.getRequestURL());
-        modelAndView.addObject("statusCode", HttpStatus.NOT_FOUND.value());
-        modelAndView.setStatus(HttpStatus.NOT_FOUND);
-        return modelAndView;
+    @ExceptionHandler(MissingParamException.class)
+    public Mono<String> handleOrderNotFound(MissingParamException ex, Model model) {
+        model.addAttribute("message", ex.getMessage());
+        model.addAttribute("statusCode", HttpStatus.NOT_FOUND.value());
+        return Mono.just("error");
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    public ModelAndView handleNoHandlerFound(NoResourceFoundException ex) {
-        ModelAndView modelAndView = new ModelAndView("error");
-        modelAndView.addObject("message", "Страница не найдена: " + ex.getMessage());
-        modelAndView.addObject("statusCode", HttpStatus.NOT_FOUND.value());
-        modelAndView.setStatus(HttpStatus.NOT_FOUND);
-        return modelAndView;
+    public Mono<String> handleNoResourceFound(NoResourceFoundException ex, Model model) {
+        model.addAttribute("message", "Страница не найдена: " + ex.getMessage());
+        model.addAttribute("statusCode", HttpStatus.NOT_FOUND.value());
+        return Mono.just("error");
     }
 
-    @ExceptionHandler({org.springframework.web.HttpRequestMethodNotSupportedException.class})
-    public ModelAndView handleMethodNotSupported() {
-        ModelAndView modelAndView = new ModelAndView("error");
-        modelAndView.addObject("message", "Метод не поддерживается");
-        modelAndView.addObject("statusCode", HttpStatus.METHOD_NOT_ALLOWED.value());
-        modelAndView.setStatus(HttpStatus.METHOD_NOT_ALLOWED);
-        return modelAndView;
-    }
-
-    @ExceptionHandler({org.springframework.web.bind.MissingServletRequestParameterException.class})
-    public ModelAndView handleMissingParams() {
-        ModelAndView modelAndView = new ModelAndView("error");
-        modelAndView.addObject("message", "Отсутствует обязательный параметр запроса");
-        modelAndView.addObject("statusCode", HttpStatus.BAD_REQUEST.value());
-        modelAndView.setStatus(HttpStatus.BAD_REQUEST);
-        return modelAndView;
+    @ExceptionHandler(MethodNotAllowedException.class)
+    public Mono<String> handleMethodNotSupported(MethodNotAllowedException ex, Model model) {
+        model.addAttribute("message", "Метод не поддерживается");
+        model.addAttribute("statusCode", HttpStatus.METHOD_NOT_ALLOWED.value());
+        return Mono.just("error");
     }
 
     @ExceptionHandler(Exception.class)
-    public ModelAndView handleGlobalError(Exception ex) {
-        ModelAndView modelAndView = new ModelAndView("error");
-        modelAndView.addObject("message", "Внутренняя ошибка сервера: " + ex.getMessage());
-        modelAndView.addObject("statusCode", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        modelAndView.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);
-        return modelAndView;
+    public Mono<String> handleGlobalError(Exception ex, Model model) {
+        model.addAttribute("message", "Внутренняя ошибка сервера: " + ex.getMessage());
+        model.addAttribute("statusCode", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        return Mono.just("error");
     }
 }

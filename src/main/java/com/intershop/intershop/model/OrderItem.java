@@ -1,30 +1,46 @@
 package com.intershop.intershop.model;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "order_items")
+@Table("order_items")
 public class OrderItem {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
-
-    @ManyToOne
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
-
+    @Column("product_id")
+    private Long productId;
+    @Column("order_id")
+    private Long orderId;
     private int quantity;
     private BigDecimal price;
+    @Transient
+    private Product product;
+
+    public OrderItem(Long id, Long productId, Long orderId, int quantity, BigDecimal price, Product product) {
+        this.id = id;
+        this.productId = productId;
+        this.orderId = orderId;
+        this.quantity = quantity;
+        this.price = price;
+        this.product = product;
+    }
+
+    public OrderItem() {
+
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
+    public Long getProductId() {
+        return productId;
+    }
 
     public Long getId() {
         return id;
@@ -38,17 +54,10 @@ public class OrderItem {
         return product;
     }
 
-    public void setProduct(Product product) {
-        this.product = product;
-    }
+    public void setProductId(Long productId) { this.productId = productId; }
 
-    public Order getOrder() {
-        return order;
-    }
-
-    public void setOrder(Order order) {
-        this.order = order;
-    }
+    public Long getOrderId() { return orderId; }
+    public void setOrderId(Long orderId) { this.orderId = orderId; }
 
     public int getQuantity() {
         return quantity;

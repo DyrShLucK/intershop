@@ -1,4 +1,3 @@
-
 services:
   postgres:
     image: postgres:16
@@ -25,11 +24,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/intershop
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: 12345
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_PROPERTIES_HIBERNATE_CONNECTION_AUTOCOMMIT: "false"
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/intershop
+      SPRING_R2DBC_USERNAME: postgres
+      SPRING_R2DBC_PASSWORD: 12345
       SPRING_PROFILES_ACTIVE: prod
     depends_on:
       - postgres

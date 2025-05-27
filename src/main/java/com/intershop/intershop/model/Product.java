@@ -1,19 +1,34 @@
 package com.intershop.intershop.model;
 
-import jakarta.persistence.*;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
+
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "products")
+
+@Table("products")
 public class Product {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
     private String description;
     private BigDecimal price;
-    @Column(columnDefinition = "BYTEA")
+    @Column("image")
     private byte[] image;
+
+    public Product(Long id, String name, String description, BigDecimal price, byte[] image) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.price = price;
+        this.image = image;
+    }
+
+    public Product() {
+
+    }
 
     public Long getId() {
         return id;
