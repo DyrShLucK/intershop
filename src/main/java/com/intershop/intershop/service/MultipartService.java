@@ -1,4 +1,4 @@
 package com.intershop.intershop.service;
 
-public class ProductServiceTest {
+public class MultipartService {
 }
