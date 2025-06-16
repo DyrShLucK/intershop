@@ -22,6 +22,7 @@ class OrderServiceTest {
     private OrderItemService orderItemService;
     private ProductService productService;
     private OrderService orderService;
+    private PayService payService;
 
     private final CartItem cartItem = new CartItem(null, 1L, 2);
     private final Product product = new Product(1L, "Test Product", "Desc", BigDecimal.TEN, new byte[0]);
@@ -40,7 +41,8 @@ class OrderServiceTest {
         cartItemService = mock(CartItemService.class);
         orderItemService = mock(OrderItemService.class);
         productService = mock(ProductService.class);
-        orderService = new OrderService(orderRepository, cartItemService, orderItemService, productService);
+        payService = mock(PayService.class);
+        orderService = new OrderService(orderRepository, cartItemService, orderItemService, productService, payService);
     }
 
     @Test

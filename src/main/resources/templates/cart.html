@@ -56,8 +56,14 @@
     </tr>
     <tr>
         <td style="text-align:right">
-            <form action="/intershop/cart/buy" method="post" th:if="${!items.isEmpty()}">
-                <button type="submit">Купить</button>
+            <b th:if="${!paymentServiceAvailable}" style="color:red;">
+                Сервис платежей недоступен. Оформление заказа невозможно.
+            </b>
+            <b th:if="${paymentServiceAvailable and !hasSufficientBalance}" style="color:red;">
+                Недостаточно средств для оформления заказа.
+            </b>
+            <form action="/intershop/cart/buy" method="post" th:if="${!items.isEmpty() and paymentServiceAvailable}">
+                <button type="submit" th:disabled="${!hasSufficientBalance}">Купить</button>
             </form>
         </td>
     </tr>

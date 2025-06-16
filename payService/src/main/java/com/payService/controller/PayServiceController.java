@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 
 @RestController
-public class payServiceController implements DefaultApi {
+public class PayServiceController implements DefaultApi {
     private final AtomicReference<Float> balance = new AtomicReference<>(10000.0F);
 
     @Override

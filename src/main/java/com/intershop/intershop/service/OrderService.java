@@ -10,6 +10,7 @@ import com.intershop.intershop.model.Order;
 import com.intershop.intershop.model.OrderItem;
 import com.intershop.intershop.repository.OrderRepository;
 
+import com.intershop.intershop.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -25,12 +26,14 @@ public class OrderService {
     private final CartItemService cartItemService;
     private final OrderItemService orderItemService;
     private final ProductService productService;
+    private final PayService payService;
 
-    public OrderService(OrderRepository orderRepository, CartItemService cartItemService, OrderItemService orderItemService, ProductService productService) {
+    public OrderService(OrderRepository orderRepository, CartItemService cartItemService, OrderItemService orderItemService, ProductService productService, PayService payService) {
         this.orderRepository = orderRepository;
         this.cartItemService = cartItemService;
         this.orderItemService = orderItemService;
         this.productService = productService;
+        this.payService = payService;
     }
 
     public Mono<Order> save(Order order) {
@@ -74,22 +77,29 @@ public class OrderService {
                 .filter(cartItems -> !cartItems.isEmpty())
                 .switchIfEmpty(Mono.error(new CartEmptyException()))
                 .flatMap(cartItems -> calculateTotalAmount(cartItems)
-                        .flatMap(totalAmount -> {
-                            Order order = new Order();
-                            order.setOrderDate(LocalDateTime.now());
-                            order.setTotalAmount(totalAmount);
-                            return orderRepository.save(order)
-                                    .flatMap(savedOrder -> createOrderItems(savedOrder, cartItems)
-                                            .collectList()
-                                            .flatMap(orderItemsList -> orderItemService.saveAll(Flux.fromIterable(orderItemsList))
-                                                    .collectList()
-                                                    .map(savedItems -> {
-                                                        savedOrder.setOrderItems(savedItems);
-                                                        return savedOrder;
-                                                    })
-                                            )
-                                    );
-                        }));
+                        .flatMap(totalAmount -> payService.processPayment(totalAmount.doubleValue())
+                                .flatMap(success -> {
+                                    if (Boolean.TRUE.equals(success)) {
+                                        Order order = new Order();
+                                        order.setOrderDate(LocalDateTime.now());
+                                        order.setTotalAmount(totalAmount);
+
+                                        return orderRepository.save(order)
+                                                .flatMap(savedOrder -> createOrderItems(savedOrder, cartItems)
+                                                        .collectList()
+                                                        .flatMap(orderItemsList -> orderItemService.saveAll(Flux.fromIterable(orderItemsList))
+                                                                .collectList()
+                                                                .map(savedItems -> {
+                                                                    savedOrder.setOrderItems(savedItems);
+                                                                    return savedOrder;
+                                                                })
+                                                        )
+                                                );
+                                    } else {
+                                        return Mono.error(new RuntimeException());
+                                    }
+                                })
+                        ));
     }
 
 

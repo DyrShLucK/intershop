@@ -16,6 +16,9 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="intershop" options="-parameters" />
       <module name="intershop.main" options="-parameters" />
+      <module name="intershop.payService" options="-parameters" />
+      <module name="intershop.payService.main" options="-parameters" />
+      <module name="intershop.payService.test" options="-parameters" />
       <module name="intershop.test" options="-parameters" />
       <module name="payService" options="-parameters" />
       <module name="payService.main" options="-parameters" />

@@ -19,6 +19,7 @@ class CartItemServiceTest {
     private CartItemRepository cartItemRepository;
     private ProductService productService;
     private CartItemService cartItemService;
+    private PayService payService;
 
     private final Product testProduct = new Product(1L, "Test Product", "Description", BigDecimal.valueOf(10), new byte[0]);
     private final CartItem cartItem = new CartItem(1L, 1L, 2);
@@ -27,7 +28,8 @@ class CartItemServiceTest {
     void setUp() {
         cartItemRepository = mock(CartItemRepository.class);
         productService = mock(ProductService.class);
-        cartItemService = new CartItemService(cartItemRepository, productService);
+        payService = mock(PayService.class);
+        cartItemService = new CartItemService(cartItemRepository, productService, payService);
     }
 
     @Test

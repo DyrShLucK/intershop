@@ -1,5 +1,6 @@
 package com.intershop.intershop.service;
 
+import com.intershop.intershop.DTO.CartViewModel;
 import com.intershop.intershop.exception.CartEmptyException;
 import com.intershop.intershop.exception.ProductNotFoundException;
 import com.intershop.intershop.exception.ProductsNotFoundException;
@@ -21,10 +22,11 @@ public class CartItemService {
 
     private final CartItemRepository cartItemRepository;
     private final ProductService productService;
-
-    public CartItemService(CartItemRepository cartItemRepository, ProductService productService) {
+    private final PayService payService;
+    public CartItemService(CartItemRepository cartItemRepository, ProductService productService, PayService payService) {
         this.cartItemRepository = cartItemRepository;
         this.productService = productService;
+        this.payService = payService;
     }
 
     public Flux<CartItem> getCart() {
@@ -77,7 +79,25 @@ public class CartItemService {
                 .flatMap(cartItem -> productService.getProduct(cartItem.getProductId()))
                 .onErrorResume(ProductNotFoundException.class, ex -> Mono.empty()).switchIfEmpty(Flux.empty());
     }
-
+    public Mono<CartViewModel> getCartViewModel() {
+        return getProductsInCart()
+                .collectList()
+                .flatMap(products -> getCartQuantitiesMap()
+                        .flatMap(quantities -> getTotal()
+                                .flatMap(total -> payService.getBalance()
+                                        .onErrorResume(ex -> Mono.just(-1.0f))
+                                        .map(balance -> {
+                                            boolean hasSufficientBalance = total != null && total.floatValue() <= balance;
+                                            return new CartViewModel(
+                                                    products,
+                                                    quantities,
+                                                    total,
+                                                    balance,
+                                                    hasSufficientBalance,
+                                                    balance != -1.0f
+                                            );
+                                        }))));
+    }
     public Mono<BigDecimal> getTotal() {
         return cartItemRepository.calculateTotalPrice()
                 .defaultIfEmpty(BigDecimal.ZERO);

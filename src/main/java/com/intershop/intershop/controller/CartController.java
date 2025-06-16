@@ -3,6 +3,7 @@ package com.intershop.intershop.controller;
 import com.intershop.intershop.exception.CartEmptyException;
 import com.intershop.intershop.service.CartItemService;
 import com.intershop.intershop.service.OrderService;
+import com.intershop.intershop.service.PayService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -16,24 +17,26 @@ import java.math.BigDecimal;
 public class CartController {
     private final CartItemService cartItemService;
     private final OrderService orderService;
+    private final PayService payService;
 
-    public CartController(CartItemService cartItemService, OrderService orderService) {
+    public CartController(CartItemService cartItemService, OrderService orderService, PayService payService) {
         this.cartItemService = cartItemService;
         this.orderService = orderService;
+        this.payService = payService;
     }
 
     @GetMapping
     public Mono<String> getCart(Model model) {
-        return cartItemService.getProductsInCart()
-                .collectList()
-                .flatMap(products -> cartItemService.getCartQuantitiesMap()
-                        .flatMap(quantities -> cartItemService.getTotal()
-                                .map(total -> {
-                                    model.addAttribute("items", products);
-                                    model.addAttribute("productQuantities", quantities);
-                                    model.addAttribute("total", total != null ? total : BigDecimal.ZERO);
-                                    return "cart";
-                                })));
+        return cartItemService.getCartViewModel()
+                .doOnNext(viewModel -> {
+                    model.addAttribute("items", viewModel.getItems());
+                    model.addAttribute("productQuantities", viewModel.getProductQuantities());
+                    model.addAttribute("total", viewModel.getTotal() != null ? viewModel.getTotal() : BigDecimal.ZERO);
+                    model.addAttribute("balance", viewModel.getBalance());
+                    model.addAttribute("hasSufficientBalance", viewModel.isHasSufficientBalance());
+                    model.addAttribute("paymentServiceAvailable", viewModel.isPaymentServiceAvailable());
+                })
+                .thenReturn("cart");
     }
 
     @PostMapping("/{productId}")

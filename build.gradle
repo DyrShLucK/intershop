@@ -2,6 +2,7 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.4.5'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id "org.openapi.generator" version "7.13.0"
 }
 
 group = 'com.intershop'
@@ -28,6 +29,8 @@ dependencies {
 	implementation 'io.r2dbc:r2dbc-postgresql:0.8.13.RELEASE'
 	implementation 'io.r2dbc:r2dbc-h2'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation(project("payService"))
+	implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
 
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -37,8 +40,29 @@ dependencies {
 	testImplementation "org.springframework.boot:spring-boot-starter-test"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 	testImplementation 'io.projectreactor:reactor-test'
+	testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+openApiGenerate {
+	generatorName = "java"
+	inputSpec.set("$projectDir/src/main/resources/static/api-spec.yaml")
+	outputDir.set("$projectDir/build/generated")
+	modelPackage.set("com.intershop.intershop.model")
+	apiPackage.set("com.intershop.intershop.api")
+	library = "webclient"
+	configOptions = [
+			hideGenerationTimestamp: "true",
+			useJakartaEe: "true",
+			reactive: "true",
+	]
+}
+sourceSets {
+	getByName("main") {
+		java {
+			srcDir("$buildDir/generated/src/main/java")
+		}
+	}
 }
