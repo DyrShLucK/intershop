@@ -2,14 +2,17 @@ package com.intershop.intershop.model;
 
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.Objects;
 
 
 @Table("products")
-public class Product {
+public class Product implements Serializable {
     @Id
     private Long id;
     private String name;
@@ -68,5 +71,20 @@ public class Product {
 
     public void setImage(byte[] image) {
         this.image = image;
+    }
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Product product = (Product) o;
+        return Objects.equals(id, product.id) &&
+                Objects.equals(name, product.name) &&
+                Objects.equals(description, product.description) &&
+                Objects.equals(price, product.price);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name, description, price);
     }
 }

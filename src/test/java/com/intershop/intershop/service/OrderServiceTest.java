@@ -51,6 +51,7 @@ class OrderServiceTest {
         when(productService.getProduct(1L)).thenReturn(Mono.just(product));
         when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
         when(orderItemService.saveAll(any(Flux.class))).thenReturn(Flux.just(orderItem));
+        when(payService.processPayment(anyDouble())).thenReturn(Mono.just(true));
 
         StepVerifier.create(orderService.createOrderFromCart())
                 .expectNextMatches(o -> o.getId() == 1L && !o.getOrderItems().isEmpty())

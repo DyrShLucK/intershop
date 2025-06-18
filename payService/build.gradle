@@ -31,9 +31,6 @@ dependencies {
 
 }
 
-tasks.named('test') {
-    useJUnitPlatform()
-}
 openApiGenerate {
     generatorName.set("spring")
     inputSpec.set("$projectDir/src/main/resources/static/api-spec.yaml")
@@ -46,7 +43,6 @@ openApiGenerate {
             library: "spring-boot",
             useTags: "true",
             reactive: "true"
-
     ])
 }
 sourceSets {
@@ -55,4 +51,10 @@ sourceSets {
             srcDir("$buildDir/generated/src/main/java")
         }
     }
+}
+tasks.named('test') {
+    useJUnitPlatform()
+}
+tasks.named('compileJava') {
+    dependsOn 'openApiGenerate'
 }

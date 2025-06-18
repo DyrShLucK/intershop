@@ -31,11 +31,15 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation(project("payService"))
 	implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
+	implementation 'io.lettuce:lettuce-core'
+	implementation 'com.redis.testcontainers:testcontainers-redis-junit:1.6.4'
 
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	annotationProcessor 'org.projectlombok:lombok'
-
+	testImplementation 'com.github.codemonstur:embedded-redis:1.4.3'
 	testRuntimeOnly "io.r2dbc:r2dbc-h2"
 	testImplementation "org.springframework.boot:spring-boot-starter-test"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
@@ -45,6 +49,9 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+tasks.named('compileJava') {
+	dependsOn 'openApiGenerate'
 }
 openApiGenerate {
 	generatorName = "java"

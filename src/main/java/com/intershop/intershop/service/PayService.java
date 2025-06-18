@@ -39,7 +39,6 @@ public class PayService {
 
     private final DefaultApi defaultApi;
 
-        @Autowired
         public PayService(DefaultApi defaultApi) {
             this.defaultApi = defaultApi;
         }

@@ -1,6 +1,8 @@
 package com.intershop.intershop.DTO;
 
 import com.intershop.intershop.model.Product;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -20,10 +22,11 @@ public class ProductPageDTO extends PageImpl<Product> {
         super(content, pageable, total);
         this.search = search;
     }
-
-
-    public String getSearch() {
-        return search;
+    public List<Product> getProducts() {
+        return getContent();
     }
 
+    public Object getSearch() {
+        return search;
+    }
 }

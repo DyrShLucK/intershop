@@ -1,9 +1,11 @@
 package com.intershop.intershop.controller;
 
+import com.intershop.intershop.DTO.CartViewModel;
 import com.intershop.intershop.model.Order;
 import com.intershop.intershop.model.Product;
 import com.intershop.intershop.service.CartItemService;
 import com.intershop.intershop.service.OrderService;
+import com.intershop.intershop.service.PayService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +27,8 @@ public class CartControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
-
+    @MockBean
+    private PayService payService;
     @MockBean
     private CartItemService cartItemService;
 
@@ -37,13 +40,19 @@ public class CartControllerTest {
     @Test
     @DisplayName("Отображение страницы корзины с товарами")
     void getCart_ShouldReturnCartPageWithItemsAndTotalPrice() {
-        List<Product> products = List.of(testProduct);
+        Product testProduct = new Product(1L, "Test Product", "Description", BigDecimal.TEN, new byte[0]);
+        List<Product> items = List.of(testProduct);
         Map<Long, Integer> quantities = Map.of(1L, 2);
         BigDecimal total = BigDecimal.valueOf(20.0);
+        Float balance = 100.0f;
+        boolean hasSufficientBalance = true;
+        boolean paymentServiceAvailable = true;
 
-        when(cartItemService.getProductsInCart()).thenReturn(Flux.fromIterable(products));
-        when(cartItemService.getCartQuantitiesMap()).thenReturn(Mono.just(quantities));
-        when(cartItemService.getTotal()).thenReturn(Mono.just(total));
+        CartViewModel viewModel = new CartViewModel(
+                items, quantities, total, balance, hasSufficientBalance, paymentServiceAvailable
+        );
+
+        when(cartItemService.getCartViewModel()).thenReturn(Mono.just(viewModel));
 
         webTestClient.get()
                 .uri("/intershop/cart")
@@ -53,7 +62,6 @@ public class CartControllerTest {
                 .expectBody(String.class)
                 .consumeWith(response -> {
                     String body = response.getResponseBody();
-
                     assert body != null;
                     org.assertj.core.api.Assertions.assertThat(body).contains("Test Product");
                     org.assertj.core.api.Assertions.assertThat(body).contains("10 руб.");

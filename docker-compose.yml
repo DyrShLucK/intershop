@@ -9,6 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
       - postgres_data:/var/lib/postgresql/data
     networks:
       - intershop-network
@@ -17,6 +18,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:latest
+    container_name: intershop-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - intershop-network
+    command: redis-server --appendonly yes
 
   app:
     build: .
@@ -29,23 +41,27 @@ services:
       SPRING_R2DBC_PASSWORD: 12345
       SPRING_PROFILES_ACTIVE: prod
       PAYMENT_SERVICE_URL: http://payment:8081
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
     depends_on:
       - postgres
+      - redis
     networks:
       - intershop-network
 
   payment:
-      build:
-        context: ./payService
-        dockerfile: Dockerfile
-      container_name: intershop-payment
-      ports:
-        - "8081:8081"
-      networks:
-        - intershop-network
+    build:
+      context: ./payService
+      dockerfile: Dockerfile
+    container_name: intershop-payment
+    ports:
+      - "8081:8081"
+    networks:
+      - intershop-network
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   intershop-network:
