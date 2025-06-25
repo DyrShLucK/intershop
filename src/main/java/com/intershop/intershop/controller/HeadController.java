@@ -13,11 +13,12 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.security.Principal;
 import java.util.Map;
 
 
 @Controller
-@RequestMapping("intershop")
+@RequestMapping({"/", "/intershop"})
 public class HeadController {
     private final ProductService productService;
     private final CartItemService cartItemService;
@@ -34,14 +35,14 @@ public class HeadController {
             @RequestParam(name = "sortDir", defaultValue = "DESC") String sortDir,
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(name = "pageNumber", defaultValue = "0") int pageNumber,
-            Model model) {
+            Model model, Principal principal) {
 
 
         Pageable pageable = PageRequest.of(pageNumber, pageSize,
                 Sort.by(Sort.Direction.fromString(sortDir), sortBy));
         return Mono.zip(
                 productService.getProductsWithPaginationAndSort(search, pageable),
-                cartItemService.getCartQuantitiesMap()
+                cartItemService.getCartQuantitiesMap(principal)
         ).map(tuple -> {
             ProductPageDTO productPage = tuple.getT1();
             Map<Long, Integer> quantities = tuple.getT2();
@@ -66,4 +67,6 @@ public class HeadController {
                         .contentType(MediaType.IMAGE_JPEG)
                         .body(product.getImage()));
     }
+
+
 }

@@ -31,7 +31,7 @@ public class ProductService {
         return productRepository.findById(id)
                 .switchIfEmpty(Mono.error(new ProductNotFoundException(id)));
     }
-    @Cacheable(value = "productList", key = "#search + ':' + (#pageable?.pageNumber ?: 0) + ':' + (#pageable?.pageSize ?: 10)")
+    @Cacheable(value = "productList", key = "#search + ':' + (#pageable?.pageNumber ?: 0) + ':' + (#pageable?.pageSize ?: 10) + ':' + (#pageable.sort)")
     public Mono<ProductPageDTO> getProductsWithPaginationAndSort(String search, Pageable pageable) {
 
         Mono<List<Product>> products = productRepository

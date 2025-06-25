@@ -5,6 +5,7 @@ import com.intershop.intershop.model.BalanceResponse;
 import com.intershop.intershop.model.PaymentRequest;
 import com.intershop.intershop.model.PaymentResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
@@ -38,16 +39,13 @@ public class PayService {
     }*/
 
     private final DefaultApi defaultApi;
-
         public PayService(DefaultApi defaultApi) {
             this.defaultApi = defaultApi;
         }
-
         public Mono<Float> getBalance() {
             return defaultApi.balanceGet()
                     .map(BalanceResponse::getBalance);
         }
-
         public Mono<Boolean> processPayment(double amount) {
             PaymentRequest request = new PaymentRequest().amount((float) amount);
             return defaultApi.paymentPost(request)

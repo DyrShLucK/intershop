@@ -13,7 +13,6 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
-@ControllerAdvice
 public class GlobalExceptionController {
 
     @ExceptionHandler(IOException.class)

@@ -1,18 +1,26 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
 <meta charset="UTF-8">
 <head>
     <title>Витрина товаров</title>
 </head>
-
+<style>
+    .a a {
+        margin: 10px
+    }
+</style>
 <body>
+<div class="a">
     <a href="intershop/orders" style="float:right;">
         <b>ЗАКАЗЫ &cudarrr;</b>
     </a>
     <a href="intershop/cart" style="float:right;">
         <b>КОРЗИНА &cudarrr;</b>
     </a>
-    <a href="/admin/add-product" style="float:right;">Добавить товар</a>
+    <a href="/admin/add-product" style="float:right;"><b>Добавить товар</b></a>
+    <a sec:authorize="isAuthenticated()" href="/logout" style="float:right;"><b>logout</b></a>
+    <a href="/login" style="float:right;"><b>Login</b></a>
+</div>
     <table style="width:70%;margin-left:auto;margin-right:auto;">
         <tr>
             <td>
