@@ -31,12 +31,12 @@ public class OrderService {
     private final ProductService productService;
     private final PayService payService;
     private final CartService cartService;
-    public OrderService(OrderRepository orderRepository, CartItemService cartItemService, OrderItemService orderItemService, ProductService productService, PayService payService, CartService cartService, CartService cartService1) {
+    public OrderService(OrderRepository orderRepository, OrderItemService orderItemService, ProductService productService, PayService payService, CartService cartService) {
         this.orderRepository = orderRepository;
         this.orderItemService = orderItemService;
         this.productService = productService;
         this.payService = payService;
-        this.cartService = cartService1;
+        this.cartService = cartService;
     }
 
     public Mono<Order> save(Order order) {

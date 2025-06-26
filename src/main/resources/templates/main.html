@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <meta charset="UTF-8">
 <head>
     <title>Витрина товаров</title>
@@ -11,15 +11,15 @@
 </style>
 <body>
 <div class="a">
-    <a href="intershop/orders" style="float:right;">
+    <a sec:authorize="isAuthenticated()" href="intershop/orders" style="float:right;">
         <b>ЗАКАЗЫ &cudarrr;</b>
     </a>
-    <a href="intershop/cart" style="float:right;">
+    <a sec:authorize="isAuthenticated()" href="intershop/cart" style="float:right;">
         <b>КОРЗИНА &cudarrr;</b>
     </a>
-    <a href="/admin/add-product" style="float:right;"><b>Добавить товар</b></a>
+    <a  th:if="${isAdmin}" href="/admin/add-product" style="float:right;"><b>Добавить товар</b></a>
     <a sec:authorize="isAuthenticated()" href="/logout" style="float:right;"><b>logout</b></a>
-    <a href="/login" style="float:right;"><b>Login</b></a>
+    <a  href="/login" style="float:right;"><b >Login</b></a>
 </div>
     <table style="width:70%;margin-left:auto;margin-right:auto;">
         <tr>
@@ -79,7 +79,7 @@
                     </tr>
                     <tr >
                         <td>
-                            <form th:action="@{intershop/cart/{id}(id=${item.id})}" method="post">
+                            <form th:action="@{intershop/cart/{id}(id=${item.id})}" method="post" sec:authorize="isAuthenticated()">
                                 <button name="action" value="minus">-</button>
                                 <span th:text="${productQuantities.get(item.id) ?: 0}"></span>
                                 <button name="action" value="plus">+</button>

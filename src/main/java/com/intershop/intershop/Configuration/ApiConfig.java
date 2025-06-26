@@ -2,6 +2,8 @@ package com.intershop.intershop.Configuration;
 
 import com.intershop.intershop.ApiClient;
 import com.intershop.intershop.api.DefaultApi;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,7 +38,7 @@ public class ApiConfig {
                         .filter(oauthFilter(clientManager, clientId))
                         .build()
         );
-        return new DefaultApi(apiClient);
+        return new DefaultApi(apiClient.setBasePath(baseUrl));
     }
 
     private ExchangeFilterFunction oauthFilter(

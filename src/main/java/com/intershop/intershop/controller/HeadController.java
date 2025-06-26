@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +41,15 @@ public class HeadController {
 
         Pageable pageable = PageRequest.of(pageNumber, pageSize,
                 Sort.by(Sort.Direction.fromString(sortDir), sortBy));
+        boolean isAdmin;
+        boolean exist = principal != null;
+        if (exist) {
+            Authentication authentication = (Authentication) principal;
+            isAdmin = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_MANAGER"));
+        } else {
+            isAdmin = false;
+        }
         return Mono.zip(
                 productService.getProductsWithPaginationAndSort(search, pageable),
                 cartItemService.getCartQuantitiesMap(principal)
@@ -55,6 +65,7 @@ public class HeadController {
             model.addAttribute("pageSize", pageSize);
             model.addAttribute("currentPage", pageNumber);
             model.addAttribute("productQuantities", quantities);
+            model.addAttribute("isAdmin", isAdmin);
 
             return "main";
         });

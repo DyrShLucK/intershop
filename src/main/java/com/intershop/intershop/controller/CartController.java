@@ -34,8 +34,6 @@ public class CartController {
     @GetMapping
     public Mono<String> getCart(Model model,
                                 Principal principal) {
-//        if(principal instanceof UsernamePasswordAuthenticationToken){System.out.println(principal.getName()+ "DB");}
-//        if(principal instanceof OAuth2AuthenticationToken){System.out.println(principal.getName() + "KC");}
         return cartService.getCartViewModel(principal)
                 .doOnNext(viewModel -> {
                     model.addAttribute("items", viewModel.getItems());

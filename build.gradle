@@ -39,6 +39,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 	implementation 'org.springframework.security:spring-security-oauth2-resource-server'
 	implementation 'org.keycloak:keycloak-admin-client:26.0.2'
+	implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
 
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -49,6 +50,7 @@ dependencies {
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 	testImplementation 'io.projectreactor:reactor-test'
 	testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+	testImplementation 'org.springframework.security:spring-security-test'
 }
 
 tasks.named('test') {

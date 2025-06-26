@@ -2,6 +2,7 @@ package com.intershop.intershop.Configuration;
 
 import com.intershop.intershop.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -120,22 +121,26 @@ public class SecurityConfig {
                 .authenticationManager(new UserDetailsRepositoryReactiveAuthenticationManager(userDetailsService))
                 .build();
     }
-    //    @Bean
-//    public MapReactiveUserDetailsService userDetailsService() {
-//        UserDetails user = User.withDefaultPasswordEncoder()
-//                .username("user")
-//                .password("user")
-//                .roles("USER")
-//                .build();
-//        return new MapReactiveUserDetailsService(user);
-//    }
+    @Bean
+    public ApplicationRunner initUsers(UserRepository userRepository, PasswordEncoder encoder) {
+        return args -> {
+            userRepository.findByUsername("user")
+                    .switchIfEmpty(userRepository.save(
+                            new com.intershop.intershop.model.User("user123", encoder.encode("user123"), "USER")
+                    ))
+                    .subscribe();
+
+            userRepository.findByUsername("manager")
+                    .switchIfEmpty(userRepository.save(
+                            new com.intershop.intershop.model.User("manager", encoder.encode("manager"), "MANAGER")
+                    ))
+                    .subscribe();
+        };
+    }
     @Bean
     public ReactiveUserDetailsService userDetailsService(UserRepository userRepository) {
         return username -> {
             String cleanUsername = username;
-            if (username.startsWith("kc_")) {
-                cleanUsername = username.substring(3);
-            }
 
             return userRepository.findByUsername(cleanUsername)
                     .map(user -> toUserDetails(user, username));
@@ -150,13 +155,6 @@ public class SecurityConfig {
                 .build();
     }
 
-    private UserDetails toUserDetails(com.intershop.intershop.model.User user) {
-        return User.builder()
-                .username(user.getUsername())
-                .password(user.getPassword())
-                .roles(user.getRole())
-                .build();
-    }
     @Bean
     public PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
@@ -226,8 +224,6 @@ public class SecurityConfig {
                 .refreshToken()
                 .build()
         );
-
         return manager;
     }
-
 }

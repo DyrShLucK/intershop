@@ -10,11 +10,16 @@
     Добавление/удаление товаров в корзину
     Оформление заказов
     Админка для добавления товаров
+    Авторизация на сайте двумя спосабами
+    login/password преддобавленых пользователей (user123/user123)(manager/manager)
+        и с помощью keycloak(User/User)
+    
 ## Технологии
     Spring Boot 3.4.5 (Java 21)
     Spring Data R2DBC + Thymeleaf
     H2 Database (по умолчанию) / PostgreSQL
     Spring Boot DevTools
+    Spring Security
 # Как запустить
 ## Клонируйте репозиторий:
 
@@ -23,6 +28,7 @@
     Запустите bootRun
         Или
     запустите через docker (docker-compose up --build)
+        запустите приложение только после запуска keycloak
 ## Откройте в браузере:
     http://localhost:8080/intershop
 ##  Настройка БД (опционально)

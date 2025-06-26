@@ -1,4 +1,3 @@
--- Таблица продуктов (осталась без изменений)
 CREATE TABLE IF NOT EXISTS products (
                                         id BIGSERIAL PRIMARY KEY,
                                         name VARCHAR(255),
@@ -11,7 +10,7 @@ CREATE TABLE IF NOT EXISTS cart (
                                     id BIGSERIAL PRIMARY KEY,
                                     total_amount DECIMAL(19, 2) NOT NULL DEFAULT 0.00,
     user_name VARCHAR(255) NOT NULL,
-    UNIQUE (user_id)
+    UNIQUE (user_name)
     );
 
 CREATE TABLE IF NOT EXISTS cart_items (
@@ -28,7 +27,7 @@ CREATE TABLE IF NOT EXISTS orders (
                                       id BIGSERIAL PRIMARY KEY,
                                       order_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                       total_amount DECIMAL(19, 2) NOT NULL CHECK (total_amount >= 0),
-    user_name VARCHAR(255) NOT NULL,
+    user_name VARCHAR(255) NOT NULL
     );
 
 CREATE TABLE IF NOT EXISTS order_items (
@@ -46,9 +45,3 @@ CREATE TABLE IF NOT EXISTS users (
                        password VARCHAR(100) NOT NULL,
                        role VARCHAR(20) NOT NULL
 );
-INSERT INTO users ( username, password, role)
-VALUES (
-           'admin',
-           '{bcrypt}$2a$10$sIygpS5mOIEvuFbQqA6EeeKKnhC36mU594tgFU.JmVkwfmXUn7K5i',
-           'MANAGER'
-       );
