@@ -1,7 +1,4 @@
 package com.intershop.intershop.service;
 
-public class UserNameService  {
-
-
+public class CartServiceTest {
 }
-
