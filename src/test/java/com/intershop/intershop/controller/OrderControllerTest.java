@@ -5,15 +5,18 @@ import com.intershop.intershop.model.OrderItem;
 import com.intershop.intershop.service.OrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.security.Principal;
 import java.time.LocalDateTime;
 
 import static org.mockito.Mockito.*;
@@ -36,6 +39,7 @@ public class OrderControllerTest {
         order.setId(1L);
         order.setOrderDate(LocalDateTime.now());
         order.setTotalAmount(BigDecimal.valueOf(20.0));
+        order.setUserName("testUser");
         return order;
     }
 
@@ -50,6 +54,7 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("Отображение страницы конкретного заказа")
+    @WithMockUser(roles = "USER")
     void getOrder_ShouldReturnOrderPageWithItems() {
         when(orderService.findOrderById(1L))
                 .thenReturn(Mono.just(testOrder));
@@ -71,6 +76,7 @@ public class OrderControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "USER", username = "testUser")
     void getOrders_ShouldReturnOrdersListWithItems() {
         Order anotherOrder = new Order();
         anotherOrder.setId(2L);
@@ -82,12 +88,13 @@ public class OrderControllerTest {
         anotherItem.setProductId(2L);
         anotherItem.setQuantity(5);
         anotherItem.setPrice(BigDecimal.TEN);
-
-        when(orderService.findAll())
+        when(orderService.getUserName(any(Principal.class)))
+                .thenReturn("testUser");
+        when(orderService.findOrdersByUserName(eq("testUser")))
                 .thenReturn(Flux.just(testOrder, anotherOrder));
-        when(orderService.getOrderItems(1L))
-                .thenReturn(Flux.just(testItem));
-        when(orderService.getOrderItems(2L))
+
+        when(orderService.getOrderItems(Mockito.anyLong()))
+                .thenReturn(Flux.just(testItem))
                 .thenReturn(Flux.just(anotherItem));
 
         webTestClient.get()
@@ -98,14 +105,7 @@ public class OrderControllerTest {
                 .expectBody(String.class)
                 .consumeWith(response -> {
                     String body = response.getResponseBody();
-
-                    assertThat(body).contains("Заказы");
-                    assertThat(body).contains("Заказ №1");
-                    assertThat(body).contains("Заказ №2");
+                    assertThat(body).contains("Заказы", "Заказ №1", "Заказ №2");
                 });
     }
-
-
-
-
 }

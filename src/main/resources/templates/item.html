@@ -6,10 +6,10 @@
 </head>
 
 <body>
-    <a href="/intershop/orders" style="float:right;">
+    <a sec:authorize="isAuthenticated()" href="/intershop/orders" style="float:right;">
         <b>ЗАКАЗЫ &cudarrr;</b>
     </a>
-    <a href="/intershop/cart" style="float:right;">
+    <a sec:authorize="isAuthenticated()" href="/intershop/cart" style="float:right;">
         <b>КОРЗИНА &cudarrr;</b>
     </a>
     <a href="/intershop" style="float:right;">
@@ -26,7 +26,7 @@
         <p>
             <span th:text="${item.getDescription}"></span>
         </p>
-        <form th:action="@{/intershop/cart/{id}(id=${item.id})}" method="post">
+        <form th:action="@{/intershop/cart/{id}(id=${item.id})}" method="post" sec:authorize="isAuthenticated()">
             <input type="hidden" name="redirectUrl" th:value="@{/intershop/item/{id}(id=${item.id})}" />
             <button name="action" value="minus">-</button>
             <span th:text="${quantity} ?: 0"></span>

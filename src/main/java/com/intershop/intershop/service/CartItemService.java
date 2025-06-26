@@ -14,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.security.Principal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,15 +24,17 @@ public class CartItemService {
     private final CartItemRepository cartItemRepository;
     private final ProductService productService;
     private final PayService payService;
+    private final CartService cartService;
 
-    public CartItemService(CartItemRepository cartItemRepository, ProductService productService, PayService payService) {
+    public CartItemService(CartItemRepository cartItemRepository, ProductService productService, PayService payService, CartService cartService) {
         this.cartItemRepository = cartItemRepository;
         this.productService = productService;
         this.payService = payService;
+        this.cartService = cartService;
     }
 
-    public Flux<CartItem> getCart() {
-        return cartItemRepository.findAll();
+    public Flux<CartItem> getCart(String username) throws CartEmptyException {
+        return cartService.getCartItemsByUserName(username);
     }
 
     public Mono<Void> deleteAll() {
@@ -44,8 +47,11 @@ public class CartItemService {
                 .defaultIfEmpty(0);
     }
 
-    public Mono<Map<Long, Integer>> getCartQuantitiesMap() {
-        return getCart()
+    public Mono<Map<Long, Integer>> getCartQuantitiesMap(Principal principal) {
+        if (principal == null) {
+            return Mono.just(Collections.emptyMap());
+        }
+        return getCart(cartService.getUserName(principal))
                 .collectList()
                 .map(items -> {
                     Map<Long, Integer> quantities = new HashMap<>();
@@ -56,49 +62,13 @@ public class CartItemService {
                 });
     }
 
-    public Mono<Void> updateCartItem(Long productId, String action) {
-        return productService.getProduct(productId)
-                .switchIfEmpty(Mono.error(new ProductNotFoundException(productId)))
-                .flatMap(product -> cartItemRepository.findByProductId(productId)
-                        .defaultIfEmpty(new CartItem(null, productId, 0))
-                        .flatMap(cartItem -> {
-                            int newQuantity = "plus".equals(action)
-                                    ? cartItem.getQuantity() + 1
-                                    : Math.max(0, cartItem.getQuantity() - 1);
-
-                            if (newQuantity == 0 && cartItem.getId() != null) {
-                                return cartItemRepository.deleteById(cartItem.getId());
-                            } else {
-                                cartItem.setQuantity(newQuantity);
-                                return cartItemRepository.save(cartItem).then();
-                            }
-                        }));
-    }
 
     public Flux<Product> getProductsInCart() {
         return cartItemRepository.findAll()
                 .flatMap(cartItem -> productService.getProduct(cartItem.getProductId()))
                 .onErrorResume(ProductNotFoundException.class, ex -> Mono.empty()).switchIfEmpty(Flux.empty());
     }
-    public Mono<CartViewModel> getCartViewModel() {
-        return getProductsInCart()
-                .collectList()
-                .flatMap(products -> getCartQuantitiesMap()
-                        .flatMap(quantities -> getTotal()
-                                .flatMap(total -> payService.getBalance()
-                                        .onErrorResume(ex -> Mono.just(-1.0f))
-                                        .map(balance -> {
-                                            boolean hasSufficientBalance = total != null && total.floatValue() <= balance;
-                                            return new CartViewModel(
-                                                    products,
-                                                    quantities,
-                                                    total,
-                                                    balance,
-                                                    hasSufficientBalance,
-                                                    balance != -1.0f
-                                            );
-                                        }))));
-    }
+
     public Mono<BigDecimal> getTotal() {
         return cartItemRepository.calculateTotalPrice()
                 .defaultIfEmpty(BigDecimal.ZERO);

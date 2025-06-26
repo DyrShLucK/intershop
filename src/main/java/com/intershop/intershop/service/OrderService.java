@@ -11,11 +11,15 @@ import com.intershop.intershop.model.OrderItem;
 import com.intershop.intershop.repository.OrderRepository;
 
 import com.intershop.intershop.repository.ProductRepository;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,17 +27,16 @@ import java.util.List;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final CartItemService cartItemService;
     private final OrderItemService orderItemService;
     private final ProductService productService;
     private final PayService payService;
-
-    public OrderService(OrderRepository orderRepository, CartItemService cartItemService, OrderItemService orderItemService, ProductService productService, PayService payService) {
+    private final CartService cartService;
+    public OrderService(OrderRepository orderRepository, OrderItemService orderItemService, ProductService productService, PayService payService, CartService cartService) {
         this.orderRepository = orderRepository;
-        this.cartItemService = cartItemService;
         this.orderItemService = orderItemService;
         this.productService = productService;
         this.payService = payService;
+        this.cartService = cartService;
     }
 
     public Mono<Order> save(Order order) {
@@ -71,35 +74,63 @@ public class OrderService {
         return orderRepository.deleteById(id);
     }
 
-    public Mono<Order> createOrderFromCart() {
-        return cartItemService.getCart()
-                .collectList()
-                .filter(cartItems -> !cartItems.isEmpty())
-                .switchIfEmpty(Mono.error(new CartEmptyException()))
-                .flatMap(cartItems -> calculateTotalAmount(cartItems)
+    public Flux<Order> findOrdersByUserName(String username) {
+        return orderRepository.findByUserName(username)
+                .concatMap(order -> orderItemService.getOrderItemsByOrderId(order.getId())
+                        .collectList()
+                        .handle((items, sink) -> {
+                            if (items == null || items.isEmpty()) {
+                                sink.error(new ProductsNotFoundException());
+                                return;
+                            }
+                            order.setOrderItems(items);
+                            sink.next(order);
+                        }));
+    }
+
+
+
+    public Mono<Order> createOrderFromCart(Principal principal) {
+        String username = getUserName(principal);
+        return cartService.getCartByUserName(username)
+                .flatMap(cart -> cartService.getTotalAmount(username)
                         .flatMap(totalAmount -> payService.processPayment(totalAmount.doubleValue())
                                 .flatMap(success -> {
                                     if (Boolean.TRUE.equals(success)) {
                                         Order order = new Order();
                                         order.setOrderDate(LocalDateTime.now());
                                         order.setTotalAmount(totalAmount);
+                                        order.setUserName(username);
 
                                         return orderRepository.save(order)
-                                                .flatMap(savedOrder -> createOrderItems(savedOrder, cartItems)
+                                                .flatMap(savedOrder -> cartService.getCartItemsByUserName(username)
+                                                        .concatMap(cartItem -> productService.getProduct(cartItem.getProductId())
+                                                                .map(product -> {
+                                                                    OrderItem orderItem = new OrderItem();
+                                                                    orderItem.setProductId(cartItem.getProductId());
+                                                                    orderItem.setOrderId(savedOrder.getId());
+                                                                    orderItem.setQuantity(cartItem.getQuantity());
+                                                                    orderItem.setPrice(product.getPrice());
+                                                                    return orderItem;
+                                                                }))
                                                         .collectList()
-                                                        .flatMap(orderItemsList -> orderItemService.saveAll(Flux.fromIterable(orderItemsList))
-                                                                .collectList()
-                                                                .map(savedItems -> {
-                                                                    savedOrder.setOrderItems(savedItems);
-                                                                    return savedOrder;
-                                                                })
+                                                        .flatMap(orderItems ->
+                                                                orderItemService.saveAll(Flux.fromIterable(orderItems))
+                                                                        .collectList()
+                                                                        .then(cartService.clearCartByUserName(username))
+                                                                        .thenReturn(orderItems)
                                                         )
+                                                        .map(items -> {
+                                                            savedOrder.setOrderItems(items);
+                                                            return savedOrder;
+                                                        })
                                                 );
                                     } else {
-                                        return Mono.error(new RuntimeException());
+                                        return Mono.error(new RuntimeException("Payment failed"));
                                     }
                                 })
-                        ));
+                        )
+                );
     }
 
 
@@ -125,5 +156,17 @@ public class OrderService {
     public Flux<OrderItem> getOrderItems(Long orderId) {
         return orderItemService.getOrderItemsByOrderId(orderId);
     }
+    public String getUserName(Principal principal) {
+        if (principal instanceof Authentication) {
+            Authentication auth = (Authentication) principal;
 
+            if (auth instanceof UsernamePasswordAuthenticationToken) {
+                return "DB_" + auth.getName();
+            } else if (auth instanceof OAuth2AuthenticationToken) {
+                return "KC_" + auth.getName();
+            }
+        }
+
+        return principal.getName();
+    }
 }

@@ -2,6 +2,7 @@ package com.intershop.intershop.repository;
 
 import com.intershop.intershop.model.CartItem;
 
+import com.intershop.intershop.model.OrderItem;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import reactor.core.publisher.Flux;
@@ -18,4 +19,9 @@ public interface CartItemRepository extends R2dbcRepository<CartItem, Long> {
 
     @Query("SELECT ci.*, p.* FROM cart_items ci JOIN products p ON ci.product_id = p.id ORDER BY p.id ASC")
     Flux<CartItem> findAllWithProductSortedById();
+
+    Flux<CartItem> findByCartId(Long cartId);
+    @Query("DELETE FROM cart_items WHERE cart_id = :cartId")
+    Mono<Void> deleteByCartId(Long cartId);
+    Mono<CartItem> findByCartIdAndProductId(Long id, Long productId);
 }

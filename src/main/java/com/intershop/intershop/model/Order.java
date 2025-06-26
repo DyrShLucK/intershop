@@ -1,5 +1,6 @@
 package com.intershop.intershop.model;
 
+import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Column;
@@ -11,6 +12,7 @@ import java.util.List;
 
 
 @Table("orders")
+@Data
 public class Order {
     @Id
     private Long id;
@@ -20,6 +22,8 @@ public class Order {
     private BigDecimal totalAmount;
     @Transient
     private List<OrderItem> orderItems;
+    @Column("user_name")
+    private String userName;
 
     public Long getId() {
         return id;
