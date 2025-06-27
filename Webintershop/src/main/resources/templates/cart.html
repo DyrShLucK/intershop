@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<meta charset="UTF-8">
+<head>
+    <title>Корзина товаров</title>
+</head>
+
+<body>
+<a href="/intershop/orders" style="float:right;">
+    <b>ЗАКАЗЫ &cudarrr;</b>
+</a>
+<a href="/intershop" style="float:right;">
+    <b>ГЛАВНАЯ &cudarrr;</b>
+</a>
+<table style="width:70%;margin-left:auto;margin-right:auto;">
+    <div th:if="${total == null or total <= 0}">
+        <p>Ваша корзина пуста.</p>
+        <a href="/intershop">Назад к покупкам</a>
+    </div>
+    <tr th:each="item : ${items}">
+
+        <td>
+            <table>
+                <tr>
+                    <td>
+                        <img width="300" height="300" th:src="@{/intershop/products/{id}/image(id=${item.id})}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <b th:text="${item.getName}"></b>
+                    </td>
+                    <td>
+                        <b th:text="${item.getPrice}+' руб.'"></b>
+                    </td>
+                </tr>
+                <tr><td th:text="${item.getDescription}"></td></tr>
+                <tr>
+                    <td>
+                        <form th:action="@{/intershop/cart/{id}(id=${item.id})}" method="post">
+                            <input type="hidden" name="redirectUrl" th:value="@{/intershop/cart}" />
+                            <button name="action" value="minus">-</button>
+                            <span th:text="${productQuantities.get(item.id) ?: 0}"></span>
+                            <button name="action" value="plus">+</button>
+                            <button name="action" value="plus" th:if="${productQuantities.get(item.id) == null}" style="float:right;">В корзину</button>
+                        </form>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td style="text-align:right">
+            <b th:text="'Итого: '+${total}+' руб.'"></b>
+        </td>
+    </tr>
+    <tr>
+        <td style="text-align:right">
+            <b th:if="${!paymentServiceAvailable}" style="color:red;">
+                Сервис платежей недоступен. Оформление заказа невозможно.
+            </b>
+            <b th:if="${paymentServiceAvailable and !hasSufficientBalance}" style="color:red;">
+                Недостаточно средств для оформления заказа.
+            </b>
+            <form action="/intershop/cart/buy" method="post" th:if="${!items.isEmpty() and paymentServiceAvailable}">
+                <button type="submit" th:disabled="${!hasSufficientBalance}">Купить</button>
+            </form>
+        </td>
+    </tr>
+</table>
+</body>
+
+</html>

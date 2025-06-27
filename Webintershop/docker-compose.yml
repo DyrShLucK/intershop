@@ -31,9 +31,7 @@ services:
     command: redis-server --appendonly yes
 
   app:
-    build:
-      context: ./WebIntershop
-      dockerfile: Dockerfile
+    build: .
     container_name: intershop-app
     ports:
       - "8080:8080"

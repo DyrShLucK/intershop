@@ -5,6 +5,9 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="Webintershop" options="-parameters" />
+      <module name="Webintershop.main" options="-parameters" />
+      <module name="Webintershop.test" options="-parameters" />
       <module name="intershop" options="-parameters" />
       <module name="intershop.main" options="-parameters" />
       <module name="intershop.payService" options="-parameters" />
