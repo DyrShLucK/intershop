@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<meta charset="UTF-8">
+<head>
+    <title>Витрина товаров</title>
+</head>
+<style>
+    .a a {
+        margin: 10px
+    }
+</style>
+<body>
+<div class="a">
+    <a sec:authorize="isAuthenticated()" href="intershop/orders" style="float:right;">
+        <b>ЗАКАЗЫ &cudarrr;</b>
+    </a>
+    <a sec:authorize="isAuthenticated()" href="intershop/cart" style="float:right;">
+        <b>КОРЗИНА &cudarrr;</b>
+    </a>
+    <a  th:if="${isAdmin}" href="/admin/add-product" style="float:right;"><b>Добавить товар</b></a>
+    <a sec:authorize="isAuthenticated()" href="/logout" style="float:right;"><b>logout</b></a>
+    <a  href="/login" style="float:right;"><b >Login</b></a>
+</div>
+    <table style="width:70%;margin-left:auto;margin-right:auto;">
+        <tr>
+            <td>
+                <form>
+                    <p>
+                        <label for="search">Найти: </label>
+                        <input id="search" style="width:300px;" name="search" th:value="${search}">
+                        <button name="action">&#128269;</button>
+                    </p>
+                    <p>
+                        <label for="sort">Сортировка: </label>
+                        <select id="sort" name="sort" onchange="this.form.submit()">
+                            <option value="id" th:selected="${sort=='id'}">нет</option>
+                            <option value="name" th:selected="${sort=='name'}">по алфавиту</option>
+                            <option value="price" th:selected="${sort=='price'}">по цене</option>
+                        </select>
+                    </p>
+                    <p>
+                        <label for="pageSize">Число товаров: </label>
+                        <select id="pageSize" name="pageSize" onchange="this.form.submit()">
+                            <option value="5" th:selected="${paging.size == 5}">5</option>
+                            <option value="10" th:selected="${paging.size == 10}">10</option>
+                            <option value="20" th:selected="${paging.size == 20}">20</option>
+                            <option value="50" th:selected="${paging.size == 50}">50</option>
+                            <option value="100" th:selected="${paging.size == 100}">100</option>
+                        </select>
+                    </p>
+                    <p>
+                        <button th:if="${paging.hasPrevious()}" name="pageNumber" th:value="${paging.number-1}">&lt;</button>
+                        <span th:text="|Страница: ${paging.number + 1}|"></span>
+                        <button th:if="${paging.hasNext()}" name="pageNumber" th:value="${paging.number+1}">&gt;</button>
+                    </p>
+                </form>
+            </td>
+        </tr>
+        <tr th:each="itemsRow : ${items}">
+            <td th:each="item : ${itemsRow}">
+                <table>
+                    <tr>
+                        <td>
+                            <a th:href="${'/intershop/item/'+item.id}">
+                                <img width="300" height="300" th:src="@{/intershop/products/{id}/image(id=${item.id})}">
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <b th:text="${item.getName}"></b>
+                        </td>
+                        <td>
+                            <b th:text="${item.getPrice}+' руб.'"></b>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td th:text="${item.getDescription}"></td>
+                    </tr>
+                    <tr >
+                        <td>
+                            <form th:action="@{intershop/cart/{id}(id=${item.id})}" method="post" sec:authorize="isAuthenticated()">
+                                <button name="action" value="minus">-</button>
+                                <span th:text="${productQuantities.get(item.id) ?: 0}"></span>
+                                <button name="action" value="plus">+</button>
+                                <button name="action" value="plus" th:if="${productQuantities.get(item.id) == null or productQuantities.get(item.id) == 0}" style="float:right;">В корзину</button>
+                            </form>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

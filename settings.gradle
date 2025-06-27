@@ -1,2 +1,3 @@
 rootProject.name = 'intershop'
 include ':payService'
+include ':Webintershop'

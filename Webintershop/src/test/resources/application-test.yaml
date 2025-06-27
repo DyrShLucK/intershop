@@ -1,0 +1,9 @@
+spring:
+  r2dbc:
+    url: r2dbc:h2:mem:///testdb-${random.uuid}?options=DB_CLOSE_DELAY=-
+    username: test
+    password: test
+logging:
+  level:
+    org.springframework.r2dbc.core.DefaultDatabaseClient: DEBUG
+    io.r2dbc: DEBUG
